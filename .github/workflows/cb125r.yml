@@ -1,0 +1,169 @@
+name: Honda CB125R Scraper
+
+on:
+  schedule:
+    # Ejecutar diariamente a las 06:00 UTC (08:00 España)
+    - cron: '0 6 * * *'
+  
+  # Permitir ejecución manual
+  workflow_dispatch:
+    inputs:
+      test_mode:
+        description: 'Ejecutar en modo prueba (máximo 10 resultados)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  scrape-cb125r:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60  # 1 hora máximo
+    
+    steps:
+    - name:  Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name:  Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name:  Cache Dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+          
+    - name:  Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name:  Install Chrome and ChromeDriver
+      run: |
+        # Actualizar sistema
+        sudo apt-get update
+        
+        # Instalar Chrome
+        wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+        sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+        sudo apt-get update
+        sudo apt-get install -y google-chrome-stable
+        
+        # Verificar instalación
+        google-chrome --version
+        
+    - name:  Setup Virtual Display
+      run: |
+        # Instalar Xvfb para display virtual
+        sudo apt-get install -y xvfb
+        
+        # Iniciar display virtual en background
+        Xvfb :99 -screen 0 1920x1080x24 &
+        echo "DISPLAY=:99" >> $GITHUB_ENV
+        
+    - name:  Test Google Sheets Connection
+      env:
+        GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      run: |
+        cd src
+        python main_runner.py --test-connection
+        
+    - name:  Run Honda CB125R Scraper
+      env:
+        GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+        DISPLAY: :99
+      run: |
+        cd src
+        if [ "${{ github.event.inputs.test_mode }}" = "true" ]; then
+          echo " Ejecutando en modo prueba..."
+          python main_runner.py cb125r --test
+        else
+          echo " Ejecutando scraping completo..."
+          python main_runner.py cb125r
+        fi
+        
+    - name:  Upload Logs as Artifact
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: cb125r-logs-${{ github.run_number }}
+        path: |
+          logs/
+          resultados/
+        retention-days: 7
+        
+    - name:  Notify on Failure
+      if: failure()
+      run: |
+        echo " Honda CB125R Scraper falló"
+        echo "Check logs en la sección Artifacts"
+        echo "Ejecutado a las: $(date)"
+        
+    - name:  Success Summary
+      if: success()
+      run: |
+        echo " Honda CB125R Scraper completado exitosamente"
+        echo " Datos subidos a Google Sheets"
+        echo " URL: https://docs.google.com/spreadsheets/d/${{ secrets.GOOGLE_SHEET_ID }}"
+        echo " Ejecutado: $(date)"
+
+  # Job adicional para validar calidad de datos (opcional)
+  validate-data:
+    runs-on: ubuntu-latest
+    needs: scrape-cb125r
+    if: success()
+    timeout-minutes: 10
+    
+    steps:
+    - name:  Checkout Repository
+      uses: actions/checkout@v4
+      
+    - name:  Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+        
+    - name:  Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas gspread google-auth
+        
+    - name:  Validate Data Quality
+      env:
+        GOOGLE_CREDENTIALS_JSON: ${{ secrets.GOOGLE_CREDENTIALS_JSON }}
+        GOOGLE_SHEET_ID: ${{ secrets.GOOGLE_SHEET_ID }}
+      run: |
+        python -c "
+        import gspread
+        from google.oauth2.service_account import Credentials
+        import json
+        import os
+        
+        # Conectar a Google Sheets
+        credentials_dict = json.loads(os.getenv('GOOGLE_CREDENTIALS_JSON'))
+        credentials = Credentials.from_service_account_info(
+            credentials_dict,
+            scopes=['https://www.googleapis.com/auth/spreadsheets']
+        )
+        client = gspread.authorize(credentials)
+        
+        # Abrir hoja de CB125R
+        spreadsheet = client.open_by_key(os.getenv('GOOGLE_SHEET_ID'))
+        try:
+            worksheet = spreadsheet.worksheet('Honda_CB125R')
+            data = worksheet.get_all_values()
+            
+            if len(data) > 1:  # Más que solo encabezados
+                print(f' Validación: {len(data)-1} motos CB125R en Google Sheets')
+                print(f' Última actualización exitosa')
+            else:
+                print(' Advertencia: No hay datos en la hoja CB125R')
+                
+        except gspread.WorksheetNotFound:
+            print(' Error: Hoja Honda_CB125R no encontrada')
+        "

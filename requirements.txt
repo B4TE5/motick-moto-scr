@@ -1,0 +1,70 @@
+# ============================================================================
+# DEPENDENCIAS - WALLAPOP MOTOS SCRAPER
+# ============================================================================
+
+# Framework principal de scraping
+selenium==4.26.1
+webdriver-manager==4.0.2
+
+# Procesamiento de datos
+pandas==2.2.3
+numpy==1.26.4
+openpyxl==3.1.5
+
+# Google Sheets API
+google-api-python-client==2.149.0
+google-auth==2.35.0
+google-auth-oauthlib==1.2.1
+gspread==6.1.4
+
+# Utilidades de desarrollo
+colorama==0.4.6
+tqdm==4.67.1
+python-dotenv==1.0.1
+
+# Logging y configuración
+PyYAML==6.0.1
+
+# Análisis de texto y expresiones regulares (incluido en Python)
+# re - incluido en Python estándar
+# json - incluido en Python estándar
+# os - incluido en Python estándar
+# time - incluido en Python estándar
+# datetime - incluido en Python estándar
+# logging - incluido en Python estándar
+# typing - incluido en Python estándar
+# abc - incluido en Python estándar
+
+# ============================================================================
+# DEPENDENCIAS OPCIONALES PARA DESARROLLO LOCAL
+# ============================================================================
+
+# Para debugging y desarrollo
+# ipython==8.18.1
+# jupyter==1.0.0
+
+# Para testing (opcional)
+# pytest==7.4.4
+# pytest-cov==4.1.0
+
+# Para análisis de código (opcional)
+# flake8==6.1.0
+# black==23.12.1
+
+# ============================================================================
+# NOTAS DE COMPATIBILIDAD
+# ============================================================================
+
+# Python: 3.11+ recomendado
+# Chrome: Se instala automáticamente en GitHub Actions
+# Sistema operativo: Ubuntu 20.04+ (GitHub Actions), Windows 10+, macOS 10.15+
+
+# Para desarrollo local en Windows, puede ser necesario:
+# - Instalar Chrome manualmente
+# - Configurar PATH para chromedriver
+
+# Para desarrollo local en macOS:
+# - brew install chromedriver (opcional, webdriver-manager lo maneja)
+
+# Para desarrollo local en Linux:
+# - sudo apt-get install chromium-browser (alternativa a Chrome)
