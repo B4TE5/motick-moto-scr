@@ -1,13 +1,13 @@
 """
 ================================================================================
-                    BASE SCRAPER CORREGIDO - WALLAPOP MOTOS SCRAPER                    
+                    BASE SCRAPER COMPLETO CORREGIDO - WALLAPOP MOTOS SCRAPER                    
 ================================================================================
 
-Clase base corregida con selectores reales de Wallapop y extracción robusta
-Sin problemas de indentación y optimizada para GitHub Actions
+Clase base con extracción de precios corregida usando la lógica probada del scraper MOTICK
+Código completo, limpio y sin errores de sintaxis
 
 Autor: Carlos Peraza
-Versión: 1.1 - Corregida
+Versión: 1.2 - Completo y corregido
 Fecha: Septiembre 2025
 ================================================================================
 """
@@ -143,6 +143,10 @@ class BaseScraper(ABC):
             if self.results:
                 df = pd.DataFrame(self.results)
                 self.logger.info(f"Scraping completado: {len(df)} motos encontradas")
+                
+                # DEBUG: Mostrar precios extraídos para diagnóstico
+                self._debug_extracted_prices(df)
+                
                 return df
             else:
                 self.logger.warning("No se encontraron resultados")
@@ -158,6 +162,31 @@ class BaseScraper(ABC):
                     self.logger.info("Driver cerrado correctamente")
                 except:
                     pass
+    
+    def _debug_extracted_prices(self, df: pd.DataFrame):
+        """Función debug para mostrar precios extraídos"""
+        print("\n=== DEBUG: PRECIOS EXTRAÍDOS ===")
+        for i, row in df.head(5).iterrows():
+            print(f"{i+1}. Título: {row['Título'][:40]}...")
+            print(f"   Precio raw: '{row['Precio']}'")
+            print(f"   Precio limpio: '{self._clean_price_for_debug(row['Precio'])}'")
+        print("================================\n")
+    
+    def _clean_price_for_debug(self, price_text: str) -> str:
+        """Función debug para mostrar limpieza de precios"""
+        if not price_text or price_text == "No especificado":
+            return "0"
+        
+        # Mostrar paso a paso la limpieza
+        step1 = price_text.replace('&nbsp;', ' ').replace('\xa0', ' ')
+        step2 = re.sub(r'[^\d.,€]', '', step1)
+        step3 = re.findall(r'\d+', step2.replace('.', '').replace(',', ''))
+        
+        print(f"     Debug: '{price_text}' -> '{step1}' -> '{step2}' -> {step3}")
+        
+        if step3:
+            return step3[0]
+        return "0"
     
     def process_search_url_with_timeout(self, url: str):
         """Procesar una URL de búsqueda con timeout"""
@@ -286,7 +315,7 @@ class BaseScraper(ABC):
             data = {
                 'URL': url,
                 'Título': self.extract_titulo_wallapop(),
-                'Precio': self.extract_precio_wallapop(),
+                'Precio': self.extract_precio_wallapop_robust(),  # FUNCIÓN MEJORADA
                 'Kilometraje': self.extract_kilometraje_wallapop(),
                 'Año': self.extract_año_wallapop(),
                 'Vendedor': self.extract_vendedor_wallapop(),
@@ -313,22 +342,123 @@ class BaseScraper(ABC):
         
         return self._extract_text_by_selectors(selectors, "Sin título")
     
-    def extract_precio_wallapop(self) -> str:
-        """Extraer precio con selectores reales de Wallapop"""
-        selectors = [
-            "span.item-detail-price_ItemDetailPrice--standard__fMa16",
-            "span[class*='ItemDetailPrice--standard']",
-            "span[class*='ItemDetailPrice']",
-            "[class*='price'] span",
-            ".price"
+    def extract_precio_wallapop_robust(self) -> str:
+        """FUNCIÓN ADAPTADA: Extraer precio usando la lógica probada del scraper MOTICK"""
+        try:
+            # ESPERAR A QUE CARGUEN LOS PRECIOS (del scraper exitoso)
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '€')]"))
+                )
+            except:
+                pass
+            
+            # ESTRATEGIA 1: SELECTORES ESPECÍFICOS (del scraper exitoso)
+            price_selectors = [
+                "span.item-detail-price_ItemDetailPrice--standardFinanced__f9ceG",
+                ".item-detail-price_ItemDetailPrice--standardFinanced__f9ceG", 
+                "span.item-detail-price_ItemDetailPrice--standard__fMa16",
+                "span.item-detail-price_ItemDetailPrice--financed__LgMRH",
+                ".item-detail-price_ItemDetailPrice--financed__LgMRH",
+                "[class*='ItemDetailPrice']",
+                "[class*='standardFinanced'] span",
+                "[class*='financed'] span"
+            ]
+            
+            for selector in price_selectors:
+                try:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for element in elements:
+                        text = element.text.strip()
+                        if text and '€' in text:
+                            price = self._extract_price_from_text_wallapop(text)
+                            if price != "No especificado":
+                                return price
+                except:
+                    continue
+            
+            # ESTRATEGIA 2: BUSCAR CUALQUIER PRECIO (método exitoso del scraper MOTICK)
+            try:
+                price_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), '€')]")
+                
+                valid_prices = []
+                for elem in price_elements[:10]:
+                    try:
+                        text = elem.text.strip().replace('&nbsp;', ' ').replace('\xa0', ' ')
+                        if not text:
+                            continue
+                        
+                        # REGEX PARA CAPTURAR PRECIOS REALISTAS
+                        price_patterns = [
+                            r'(\d{1,3}(?:\.\d{3})+)\s*€',
+                            r'(\d{1,6})\s*€'
+                        ]
+                        
+                        for pattern in price_patterns:
+                            price_matches = re.findall(pattern, text)
+                            for price_match in price_matches:
+                                try:
+                                    price_clean = price_match.replace('.', '')
+                                    price_value = int(price_clean)
+                                    
+                                    # RANGO PARA MOTOS: 500€ - 60,000€
+                                    if 500 <= price_value <= 60000:
+                                        formatted_price = f"{price_value:,}".replace(',', '.') + " €" if price_value >= 1000 else f"{price_value} €"
+                                        valid_prices.append((price_value, formatted_price))
+                                except:
+                                    continue
+                    except:
+                        continue
+                
+                # Tomar el precio más alto como precio principal
+                if valid_prices:
+                    valid_prices = sorted(set(valid_prices), key=lambda x: x[0], reverse=True)
+                    return valid_prices[0][1]
+                        
+            except:
+                pass
+            
+            return "No especificado"
+            
+        except Exception as e:
+            self.logger.debug(f"Error extrayendo precio: {e}")
+            return "No especificado"
+    
+    def _extract_price_from_text_wallapop(self, text: str) -> str:
+        """Extraer precio de texto - ADAPTADO del scraper MOTICK exitoso"""
+        if not text:
+            return "No especificado"
+        
+        # Limpiar texto (como en el scraper exitoso)
+        clean_text = text.replace('&nbsp;', ' ').replace('\xa0', ' ').strip()
+        if not clean_text:
+            return "No especificado"
+        
+        # REGEX ESPECÍFICOS PARA WALLAPOP (del scraper exitoso)
+        price_patterns = [
+            r'(\d{1,3}(?:\.\d{3})+)\s*€',           # "7.690 €"
+            r'(\d{4,6})\s*€',                       # "7690 €"
+            r'(\d{1,2})\s*\.\s*(\d{3})\s*€',        # "7 . 690 €"
+            r'(\d{1,2}),(\d{3})\s*€',               # "7,690 €"
+            r'€\s*(\d{1,2}\.?\d{3,6})',             # "€ 7690"
+            r'(\d{1,2}\.?\d{3,6})\s*euros?',        # "7690 euros"
         ]
         
-        precio_raw = self._extract_text_by_selectors(selectors, "No especificado")
-        
-        # Limpiar precio
-        if precio_raw and precio_raw != "No especificado":
-            precio_clean = precio_raw.replace('&nbsp;', ' ').replace('\xa0', ' ').strip()
-            return precio_clean
+        for pattern in price_patterns:
+            matches = re.finditer(pattern, clean_text, re.IGNORECASE)
+            for match in matches:
+                try:
+                    if len(match.groups()) == 2:  # Formato como 7.690
+                        price_value = int(match.group(1) + match.group(2))
+                    else:
+                        price_str = match.group(1).replace('.', '').replace(',', '')
+                        price_value = int(price_str)
+                    
+                    # RANGO PARA MOTOS: 500€ - 60,000€
+                    if 500 <= price_value <= 60000:
+                        return f"{price_value:,} €".replace(',', '.')
+                except:
+                    continue
         
         return "No especificado"
     
