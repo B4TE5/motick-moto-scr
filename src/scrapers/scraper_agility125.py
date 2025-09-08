@@ -1,20 +1,12 @@
 """
 ================================================================================
-                    SCRAPER KYMCO AGILITY125 - WALLAPOP MOTOS SCRAPER                    
+                            SCRAPER KYMCO AGILITY125                   
 ================================================================================
 
-Scraper específico para Kymco Agility125
-Implementa detección ultra precisa del modelo de scooter económico
-
-Características:
-- Detección específica de Kymco Agility125 y variantes
-- Filtrado optimizado para scooters económicos
-- URLs optimizadas para este modelo específico
-- Validación estricta de marca y modelo
-
 Autor: Carlos Peraza
-Versión: 1.0
-Fecha: Septiembre 2025
+Versión: 2.0
+Fecha: Agosto 2025
+
 ================================================================================
 """
 
@@ -50,55 +42,152 @@ class ScraperAGILITY125(BaseScraper):
             r'\bmyroad\b'              # MyRoad
         ]
         
-        self.logger.info(f" Scraper Agility125 inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
+        self.logger.info(f"Scraper Agility125 inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
     
     def get_search_urls(self) -> List[str]:
-        """Generar URLs de búsqueda optimizadas para Kymco Agility125"""
+        """Generar URLs de búsqueda optimizadas para Kymco Agility125 - VERSIÓN EXTENDIDA"""
         min_price = self.modelo_config['precio_min']
         max_price = self.modelo_config['precio_max']
         
         urls = []
         
-        # URLs principales más efectivas para Agility125
+        # 1. BÚSQUEDAS PRINCIPALES BÁSICAS
         base_queries = [
-            "kymco%20agility125",
-            "kymco%20agility%20125", 
-            "agility125",
-            "agility%20125",
-            "kymco%20agility",
-            "scooter%20kymco%20agility",
-            "kymco%20agility125%202020",
-            "kymco%20agility125%202021",
-            "kymco%20agility125%202022",
-            "kymco%20agility125%202023",
-            "kymco%20agility125%202024"
+            "kymco%20agility125", "kymco%20agility%20125", "agility125", "agility%20125",
+            "kymco%20agility", "scooter%20kymco%20agility125", "scooter%20kymco%20agility",
+            "kymco%20agility%20scooter", "agility%20kymco", "scooter%20agility125"
         ]
         
-        # Generar URLs con diferentes ordenamientos
-        for query in base_queries:
-            # URL básica con filtro de precio
+        # 2. BÚSQUEDAS POR AÑOS ESPECÍFICOS (2014-2024)
+        year_queries = []
+        for year in range(2014, 2025):
+            year_queries.extend([
+                f"kymco%20agility125%20{year}",
+                f"agility125%20{year}",
+                f"kymco%20agility%20{year}",
+                f"scooter%20kymco%20{year}%20agility",
+                f"agility%20{year}%20kymco"
+            ])
+        
+        # 3. BÚSQUEDAS POR RANGOS DE PRECIOS
+        price_ranges = [
+            (min_price, min_price + 400),
+            (min_price + 300, min_price + 800),
+            (min_price + 600, min_price + 1200),
+            (min_price + 1000, max_price)
+        ]
+        
+        price_queries = []
+        for min_p, max_p in price_ranges:
+            price_queries.extend([
+                f"agility125&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"kymco%20agility&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"scooter%20kymco&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"scooter%20economico&min_sale_price={min_p}&max_sale_price={max_p}"
+            ])
+        
+        # 4. BÚSQUEDAS POR CIUDADES Y REGIONES
+        regions = [
+            ("madrid", "40.4168", "-3.7038"),
+            ("barcelona", "41.3851", "2.1734"),
+            ("valencia", "39.4699", "-0.3763"),
+            ("sevilla", "37.3891", "-5.9845"),
+            ("bilbao", "43.2630", "-2.9350"),
+            ("zaragoza", "41.6488", "-0.8891"),
+            ("murcia", "37.9922", "-1.1307"),
+            ("palma", "39.5696", "2.6502"),
+            ("las%20palmas", "28.1248", "-15.4300"),
+            ("alicante", "38.3452", "-0.4810"),
+            ("cordoba", "37.8882", "-4.7794"),
+            ("malaga", "36.7196", "-4.4214")
+        ]
+        
+        regional_queries = []
+        for city, lat, lng in regions:
+            regional_queries.extend([
+                f"agility125&latitude={lat}&longitude={lng}&distance=50000",
+                f"kymco%20agility&latitude={lat}&longitude={lng}&distance=50000",
+                f"scooter%20kymco&latitude={lat}&longitude={lng}&distance=75000",
+                f"scooter%20economico&latitude={lat}&longitude={lng}&distance=75000"
+            ])
+        
+        # 5. BÚSQUEDAS CON TÉRMINOS RELACIONADOS
+        related_queries = [
+            "scooter%20125%20kymco", "kymco%20125%20scooter", "scooter%20economico%20kymco",
+            "kymco%20scooter%20125", "moto%20automatica%20kymco", "scooter%20automatico%20kymco",
+            "kymco%20agility%20original", "agility%20kymco%20oficial", "scooter%20kymco%20nuevo",
+            "scooter%20kymco%20segunda%20mano", "agility%20segunda%20mano", "kymco%20agility%20usado",
+            "scooter%20barato%20kymco", "kymco%20economico", "scooter%20kymco%20barato"
+        ]
+        
+        # 6. BÚSQUEDAS CON ERRORES ORTOGRÁFICOS COMUNES
+        misspelling_queries = [
+            "kimco%20agility125", "kymco%20agiliti125", "kymco%20agility12", "kimco%20agility%20125",
+            "kymco%20agility%20modelo%20125", "scuter%20kymco%20agility", "escoter%20kymco%20125",
+            "kymco%20agilty125", "agility%20125%20kimco", "kymco%20agiliyt"
+        ]
+        
+        # 7. BÚSQUEDAS CON FILTROS ESPECÍFICOS
+        specific_queries = [
+            "agility125%20particular", "agility125%20concesionario", "kymco%20agility%20taller",
+            "agility125%20garantia", "kymco%20agility%20financiacion", "scooter%20kymco%20ocasion",
+            "agility125%20barato", "kymco%20agility%20economico", "scooter%20agility%20oferta"
+        ]
+        
+        # 8. BÚSQUEDAS POR CARACTERÍSTICAS TÉCNICAS
+        technical_queries = [
+            "scooter%20125%20automatico%20kymco", "scooter%20125cc%20kymco", "kymco%20125%20automatico",
+            "scooter%20kymco%20cvt", "scooter%20urbano%20kymco", "kymco%20125%20urbano",
+            "scooter%20economico%20125", "moto%20125%20automatica%20kymco"
+        ]
+        
+        # 9. BÚSQUEDAS DE VARIANTES ESPECÍFICAS
+        variant_queries = [
+            "agility%20plus", "agility%20city", "kymco%20agility%20plus", "kymco%20agility%20city",
+            "agility%20125%20plus", "agility%20125%20city", "agility%20naked", "agility%20carry"
+        ]
+        
+        # 10. BÚSQUEDAS CON TÉRMINOS DE MERCADO DE SEGUNDA MANO
+        market_queries = [
+            "scooter%20segunda%20mano%20kymco", "kymco%20ocasion", "agility%20ocasion",
+            "scooter%20usado%20kymco", "kymco%20segunda%20mano", "agility%20segunda%20mano",
+            "scooter%20seminuevo%20kymco", "kymco%20seminuevo"
+        ]
+        
+        # 11. COMBINAR TODAS LAS QUERIES
+        all_base_queries = (base_queries + year_queries + related_queries + 
+                           misspelling_queries + specific_queries + technical_queries + 
+                           variant_queries + market_queries)
+        
+        # GENERAR URLS PRINCIPALES
+        for query in all_base_queries:
+            # URL básica
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}")
             
             # URL ordenada por más recientes
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&order_by=newest")
+            
+            # URL ordenada por precio
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&order_by=price_low_to_high")
         
-        # URLs específicas por regiones principales
-        main_regions = ["madrid", "barcelona", "valencia"]
-        for region in main_regions:
-            query = "kymco%20agility125"
-            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&filters_source=search_box&latitude=40.4168&longitude=-3.7038&distance=100000")
+        # AÑADIR BÚSQUEDAS POR RANGOS DE PRECIOS
+        for query in price_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        # URLs específicas para scooters económicos
-        economic_queries = [
-            "scooter%20125%20barato",
-            "scooter%20economico%20125",
-            "kymco%20125"
-        ]
+        # AÑADIR BÚSQUEDAS REGIONALES
+        for query in regional_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        for query in economic_queries:
-            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}")
+        # 12. BÚSQUEDAS ESPECÍFICAS SIN FILTRO DE PRECIO (para encontrar ofertas)
+        no_price_queries = ["agility125", "kymco%20agility", "scooter%20kymco%20125"]
+        for query in no_price_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=price_low_to_high")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        # Eliminar duplicados manteniendo orden
+        # 13. ELIMINAR DUPLICADOS MANTENIENDO ORDEN
         unique_urls = []
         seen = set()
         for url in urls:
@@ -106,7 +195,7 @@ class ScraperAGILITY125(BaseScraper):
                 unique_urls.append(url)
                 seen.add(url)
         
-        self.logger.info(f"🔍 {len(unique_urls)} URLs generadas para Agility125")
+        self.logger.info(f"URLs generadas para Agility125: {len(unique_urls)}")
         return unique_urls
     
     def validate_moto_data(self, moto_data: Dict) -> bool:
@@ -127,35 +216,35 @@ class ScraperAGILITY125(BaseScraper):
             # PASO 1: Verificar que sea Kymco
             kymco_found = self._is_kymco_brand(combined_text)
             if not kymco_found:
-                self.logger.debug(" No es Kymco")
+                self.logger.debug("No es Kymco")
                 return False
             
             # PASO 2: Verificar modelo Agility125 específico
             agility125_found = self._is_agility125_model(combined_text)
             if not agility125_found:
-                self.logger.debug(" No es Agility125")
+                self.logger.debug("No es Agility125")
                 return False
             
             # PASO 3: Excluir otros modelos Agility o Kymco
             if self._is_excluded_model(combined_text):
-                self.logger.debug(" Es otro modelo Kymco excluido")
+                self.logger.debug("Es otro modelo Kymco excluido")
                 return False
             
             # PASO 4: Validar precio si está disponible
             if not self._is_valid_price_range(moto_data.get('Precio', '')):
-                self.logger.debug(" Precio fuera de rango")
+                self.logger.debug("Precio fuera de rango")
                 return False
             
             # PASO 5: Validar año si está disponible
             if not self._is_valid_year_range(moto_data.get('Año', '')):
-                self.logger.debug(" Año fuera de rango")
+                self.logger.debug("Año fuera de rango")
                 return False
             
-            self.logger.debug(f" Agility125 válida: {titulo[:50]}")
+            self.logger.debug(f"Agility125 válida: {titulo[:50]}")
             return True
             
         except Exception as e:
-            self.logger.warning(f" Error validando moto: {e}")
+            self.logger.warning(f"Error validando moto: {e}")
             return False
     
     def _is_kymco_brand(self, text: str) -> bool:
@@ -231,57 +320,6 @@ class ScraperAGILITY125(BaseScraper):
             pass
         
         return True  # Aceptar si no se puede parsear
-    
-    def extract_kilometraje(self) -> str:
-        """Extraer kilometraje con patrones específicos para scooters económicos"""
-        try:
-            # Buscar en toda la página
-            page_text = self.driver.page_source.lower()
-            
-            # Patrones específicos para scooters (pueden tener más km por uso urbano)
-            km_patterns = [
-                r'(\d+(?:\.\d{3})*)\s*km',
-                r'(\d+(?:,\d{3})*)\s*km',
-                r'(\d+(?:\.\d{3})*)\s*kilómetros',
-                r'kilometraje[:\s]*(\d+(?:\.\d{3})*)',
-                r'km[:\s]*(\d+(?:\.\d{3})*)',
-                r'(\d+)\s*mil\s*km'
-            ]
-            
-            for pattern in km_patterns:
-                match = re.search(pattern, page_text)
-                if match:
-                    km_value = match.group(1)
-                    # Convertir mil km a km
-                    if 'mil' in match.group(0):
-                        km_value = str(int(float(km_value.replace(',', '.')) * 1000))
-                    return km_value
-            
-            return "No especificado"
-            
-        except Exception as e:
-            self.logger.debug(f"Error extrayendo km: {e}")
-            return "No especificado"
-    
-    def extract_vendedor(self) -> str:
-        """Extraer vendedor con detección de comerciales específicos"""
-        selectors = [
-            "[data-testid='seller-name']",
-            ".seller-name",
-            ".user-info .name",
-            ".seller-info .name",
-            ".profile-name",
-            ".user-name"
-        ]
-        
-        vendedor = self._extract_text_by_selectors(selectors, "Particular")
-        
-        # Detectar si es comercial (menos común en scooters económicos)
-        commercial_keywords = ['concesionario', 'motor', 'moto', 'kymco', 'taller', 'scooter']
-        if any(word in vendedor.lower() for word in commercial_keywords):
-            return f" {vendedor}"
-        
-        return vendedor
 
 # ============================================================================
 # FUNCIÓN PRINCIPAL
@@ -294,14 +332,14 @@ def run_agility125_scraper():
         df_results = scraper.scrape_model()
         
         if not df_results.empty:
-            print(f" Scraping Agility125 completado: {len(df_results)} motos encontradas")
+            print(f"Scraping Agility125 completado: {len(df_results)} motos encontradas")
             return df_results
         else:
-            print(" No se encontraron motos Agility125")
+            print("No se encontraron motos Agility125")
             return df_results
             
     except Exception as e:
-        print(f" Error en scraper Agility125: {e}")
+        print(f"Error en scraper Agility125: {e}")
         return None
 
 if __name__ == "__main__":
@@ -312,6 +350,6 @@ if __name__ == "__main__":
     
     results = run_agility125_scraper()
     if results is not None and not results.empty:
-        print(f"\n Primeras 3 motos encontradas:")
+        print(f"\nPrimeras 3 motos encontradas:")
         for i, (_, moto) in enumerate(results.head(3).iterrows()):
             print(f"   {i+1}. {moto['Título']} - {moto['Precio']} - {moto['Año']}")
