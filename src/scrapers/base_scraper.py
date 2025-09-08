@@ -1,13 +1,13 @@
 """
 ================================================================================
-                    BASE SCRAPER ACTUALIZADO - WALLAPOP MOTOS SCRAPER                    
+                    BASE SCRAPER CORREGIDO - WALLAPOP MOTOS SCRAPER                    
 ================================================================================
 
-Clase base actualizada con selectores reales de Wallapop y extracción robusta
-Basado en el HTML real y la función de extracción que funcionaba en local
+Clase base corregida con selectores reales de Wallapop y extracción robusta
+Sin problemas de indentación y optimizada para GitHub Actions
 
 Autor: Carlos Peraza
-Versión: 1.1 - Actualizada para Wallapop actual
+Versión: 1.1 - Corregida
 Fecha: Septiembre 2025
 ================================================================================
 """
@@ -30,15 +30,10 @@ from abc import ABC, abstractmethod
 from config import get_modelo_config, SELENIUM_CONFIG, is_github_actions
 
 class BaseScraper(ABC):
-    """Clase base actualizada para scrapers de modelos específicos de motos"""
+    """Clase base para scrapers de modelos específicos de motos"""
     
     def __init__(self, modelo_key: str):
-        """
-        Inicializar scraper base
-        
-        Args:
-            modelo_key: Clave del modelo (ej: 'cb125r')
-        """
+        """Inicializar scraper base"""
         self.modelo_key = modelo_key
         self.modelo_config = get_modelo_config(modelo_key)
         self.selenium_config = SELENIUM_CONFIG
@@ -48,13 +43,13 @@ class BaseScraper(ABC):
         self.results = []
         self.processed_urls = set()
         
-        self.logger.info(f" Scraper iniciado para {self.modelo_config['nombre']}")
+        self.logger.info(f"Scraper iniciado para {self.modelo_config['nombre']}")
     
     def setup_driver(self) -> webdriver.Chrome:
-        """Configurar y retornar driver de Chrome optimizado para GitHub Actions"""
+        """Configurar y retornar driver de Chrome optimizado"""
         options = Options()
         
-        # Configuración básica optimizada
+        # Configuración básica
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -97,81 +92,76 @@ class BaseScraper(ABC):
         try:
             driver = webdriver.Chrome(options=options)
             
-            # Configurar timeouts más cortos para evitar colgadas
-            driver.implicitly_wait(0.5)  # Reducido
-            driver.set_page_load_timeout(10)  # Reducido de 15 a 10
-            driver.set_script_timeout(8)  # Reducido de 10 a 8
+            # Configurar timeouts
+            driver.implicitly_wait(0.5)
+            driver.set_page_load_timeout(10)
+            driver.set_script_timeout(8)
             
             if not is_github_actions():
                 driver.maximize_window()
             
-            self.logger.info(" Driver configurado correctamente")
+            self.logger.info("Driver configurado correctamente")
             return driver
             
         except Exception as e:
-            self.logger.error(f" Error configurando driver: {e}")
+            self.logger.error(f"Error configurando driver: {e}")
             raise
     
     def scrape_model(self) -> pd.DataFrame:
-        """
-        Método principal para hacer scraping de un modelo con mejor manejo de errores
-        
-        Returns:
-            DataFrame con los resultados
-        """
+        """Método principal para hacer scraping de un modelo"""
         try:
-            self.logger.info(f" Iniciando scraping de {self.modelo_config['nombre']}")
+            self.logger.info(f"Iniciando scraping de {self.modelo_config['nombre']}")
             
             # Configurar driver
             self.driver = self.setup_driver()
             
             # Obtener URLs de búsqueda específicas del modelo
             search_urls = self.get_search_urls()
-            self.logger.info(f" {len(search_urls)} URLs de búsqueda generadas")
+            self.logger.info(f"{len(search_urls)} URLs de búsqueda generadas")
             
             # Procesar cada URL con límite de tiempo
             start_time = time.time()
-            max_total_time = 1800 if is_github_actions() else 3600  # 30 min en GH Actions, 1h local
+            max_total_time = 1800 if is_github_actions() else 3600
             
             for i, url in enumerate(search_urls, 1):
                 # Verificar tiempo total
                 elapsed_time = time.time() - start_time
                 if elapsed_time > max_total_time:
-                    self.logger.warning(f" Tiempo límite alcanzado ({max_total_time/60:.1f} min)")
+                    self.logger.warning(f"Tiempo límite alcanzado ({max_total_time/60:.1f} min)")
                     break
                 
-                self.logger.info(f" Procesando URL {i}/{len(search_urls)}: {url[:80]}...")
+                self.logger.info(f"Procesando URL {i}/{len(search_urls)}: {url[:80]}...")
                 
                 try:
                     self.process_search_url_with_timeout(url)
-                    time.sleep(1)  # Pausa reducida entre URLs
+                    time.sleep(1)
                 except Exception as e:
-                    self.logger.warning(f" Error procesando URL {i}: {e}")
+                    self.logger.warning(f"Error procesando URL {i}: {e}")
                     continue
             
             # Convertir resultados a DataFrame
             if self.results:
                 df = pd.DataFrame(self.results)
-                self.logger.info(f" Scraping completado: {len(df)} motos encontradas")
+                self.logger.info(f"Scraping completado: {len(df)} motos encontradas")
                 return df
             else:
-                self.logger.warning(" No se encontraron resultados")
+                self.logger.warning("No se encontraron resultados")
                 return pd.DataFrame()
                 
         except Exception as e:
-            self.logger.error(f"❌ Error durante scraping: {e}")
+            self.logger.error(f"Error durante scraping: {e}")
             return pd.DataFrame()
         finally:
             if self.driver:
                 try:
                     self.driver.quit()
-                    self.logger.info(" Driver cerrado correctamente")
+                    self.logger.info("Driver cerrado correctamente")
                 except:
                     pass
     
     def process_search_url_with_timeout(self, url: str):
         """Procesar una URL de búsqueda con timeout"""
-        max_url_time = 600 if is_github_actions() else 900  # 10 min en GH Actions
+        max_url_time = 600 if is_github_actions() else 900
         start_url_time = time.time()
         
         try:
@@ -183,47 +173,47 @@ class BaseScraper(ABC):
             enlaces = self.get_anuncio_links()
             
             if not enlaces:
-                self.logger.warning(f" No se encontraron enlaces en esta URL")
+                self.logger.warning(f"No se encontraron enlaces en esta URL")
                 return
             
-            self.logger.info(f"🔗 {len(enlaces)} enlaces encontrados")
+            self.logger.info(f"{len(enlaces)} enlaces encontrados")
             
             # Procesar cada anuncio con límite
-            max_anuncios = 10 if is_github_actions() else len(enlaces)  # Límite en GH Actions
+            max_anuncios = 10 if is_github_actions() else len(enlaces)
             anuncios_procesados = 0
             
             for i, enlace in enumerate(enlaces[:max_anuncios], 1):
                 # Verificar timeout de URL
                 elapsed_url_time = time.time() - start_url_time
                 if elapsed_url_time > max_url_time:
-                    self.logger.warning(f" Timeout de URL alcanzado")
+                    self.logger.warning(f"Timeout de URL alcanzado")
                     break
                 
                 if enlace in self.processed_urls:
                     continue
                 
                 try:
-                    self.logger.debug(f" Procesando anuncio {i}/{min(max_anuncios, len(enlaces))}")
+                    self.logger.debug(f"Procesando anuncio {i}/{min(max_anuncios, len(enlaces))}")
                     moto_data = self.extract_anuncio_data_robust(enlace)
                     
                     if moto_data and self.validate_moto_data(moto_data):
                         self.results.append(moto_data)
                         self.processed_urls.add(enlace)
                         anuncios_procesados += 1
-                        self.logger.debug(f" Moto válida: {moto_data.get('Título', 'Sin título')[:30]}")
+                        self.logger.debug(f"Moto válida: {moto_data.get('Título', 'Sin título')[:30]}")
                     else:
-                        self.logger.debug(f" Moto no válida o datos incompletos")
+                        self.logger.debug(f"Moto no válida o datos incompletos")
                     
-                    time.sleep(0.5)  # Pausa muy corta entre anuncios
+                    time.sleep(0.5)
                     
                 except Exception as e:
-                    self.logger.warning(f" Error extrayendo anuncio {i}: {e}")
+                    self.logger.warning(f"Error extrayendo anuncio {i}: {e}")
                     continue
             
-            self.logger.info(f" URL procesada: {anuncios_procesados} motos válidas de {len(enlaces)} enlaces")
+            self.logger.info(f"URL procesada: {anuncios_procesados} motos válidas de {len(enlaces)} enlaces")
                     
         except Exception as e:
-            self.logger.error(f" Error procesando URL de búsqueda: {e}")
+            self.logger.error(f"Error procesando URL de búsqueda: {e}")
     
     def get_anuncio_links(self) -> List[str]:
         """Obtener enlaces de anuncios con selectores actualizados"""
@@ -261,19 +251,18 @@ class BaseScraper(ABC):
             return enlaces_validos
             
         except Exception as e:
-            self.logger.error(f" Error obteniendo enlaces: {e}")
+            self.logger.error(f"Error obteniendo enlaces: {e}")
             return []
     
     def scroll_to_load_content(self):
         """Hacer scroll optimizado para cargar contenido dinámico"""
         try:
-            # Scroll más rápido y limitado
             max_scrolls = 2 if is_github_actions() else 3
             
             for attempt in range(max_scrolls):
                 current_height = self.driver.execute_script("return document.body.scrollHeight")
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(1)  # Reducido
+                time.sleep(1)
                 
                 new_height = self.driver.execute_script("return document.body.scrollHeight")
                 if new_height == current_height:
@@ -284,22 +273,14 @@ class BaseScraper(ABC):
             time.sleep(0.5)
             
         except Exception as e:
-            self.logger.warning(f" Error durante scroll: {e}")
+            self.logger.warning(f"Error durante scroll: {e}")
     
     def extract_anuncio_data_robust(self, url: str) -> Optional[Dict]:
-        """
-        Extraer datos con selectores actualizados de Wallapop
-        
-        Args:
-            url: URL del anuncio
-            
-        Returns:
-            Diccionario con datos del anuncio o None si falla
-        """
+        """Extraer datos con selectores actualizados de Wallapop"""
         try:
-            # Cargar página del anuncio con timeout más corto
+            # Cargar página del anuncio
             self.driver.get(url)
-            time.sleep(1.5)  # Reducido
+            time.sleep(1.5)
             
             # Extraer datos usando selectores actualizados
             data = {
@@ -318,10 +299,8 @@ class BaseScraper(ABC):
             return data
             
         except Exception as e:
-            self.logger.warning(f" Error extrayendo datos de {url}: {e}")
+            self.logger.warning(f"Error extrayendo datos de {url}: {e}")
             return None
-    
-    # Métodos de extracción actualizados con selectores reales de Wallapop
     
     def extract_titulo_wallapop(self) -> str:
         """Extraer título con selector real de Wallapop"""
@@ -348,7 +327,6 @@ class BaseScraper(ABC):
         
         # Limpiar precio
         if precio_raw and precio_raw != "No especificado":
-            # Remover &nbsp; y espacios extra
             precio_clean = precio_raw.replace('&nbsp;', ' ').replace('\xa0', ' ').strip()
             return precio_clean
         
@@ -364,16 +342,14 @@ class BaseScraper(ABC):
         ]
         
         descripcion = self._extract_text_by_selectors(selectors, "")
-        return descripcion[:500] if descripcion else ""  # Limitar tamaño
+        return descripcion[:500] if descripcion else ""
     
     def extract_año_wallapop(self) -> str:
         """Extraer año usando la función robusta"""
         try:
-            # Obtener descripción completa
             descripcion = self.extract_descripcion_wallapop()
             titulo = self.extract_titulo_wallapop()
             
-            # Usar la función robusta que funcionaba en local
             año, _ = self.extract_year_and_km_universal(f"{titulo} {descripcion}")
             return año
             
@@ -384,11 +360,9 @@ class BaseScraper(ABC):
     def extract_kilometraje_wallapop(self) -> str:
         """Extraer kilometraje usando la función robusta"""
         try:
-            # Obtener descripción completa
             descripcion = self.extract_descripcion_wallapop()
             titulo = self.extract_titulo_wallapop()
             
-            # Usar la función robusta que funcionaba en local
             _, km = self.extract_year_and_km_universal(f"{titulo} {descripcion}")
             return km if km else "No especificado"
             
@@ -397,34 +371,28 @@ class BaseScraper(ABC):
             return "No especificado"
     
     def extract_year_and_km_universal(self, text: str) -> Tuple[str, str]:
-        """
-        Función robusta de extracción basada en la que funcionaba en local
-        Adaptada para CB125R y otros modelos
-        """
+        """Función robusta de extracción adaptada"""
         if not text:
             return "No especificado", "No especificado"
         
         text_normalized = text.lower().replace('\n', ' ').replace('\t', ' ')
         text_normalized = re.sub(r'\s+', ' ', text_normalized)
         
-        # ===== EXTRACCIÓN DE AÑO =====
+        # EXTRACCIÓN DE AÑO
         year = "No especificado"
         all_year_candidates = []
         
-        # Patrones de año optimizados
         year_patterns = [
-            # Patrones específicos con alta prioridad
             (r'año\s*[:\-]\s*(201[3-9]|202[0-4])', 22, "año: directo"),
             (r'año\s+(201[3-9]|202[0-4])', 20, "año XXXX"),
             (r'del\s+año\s+(201[3-9]|202[0-4])', 20, "del año XXXX"),
             (r'(?:modelo|model)\s+(?:del\s+)?(?:año\s+)?(201[3-9]|202[0-4])', 20, "modelo del año"),
-            (r'matriculad[ao]\s+(?:en\s+(?:el\s+año\s+)?)?(?:en\s+)?(201[3-9]|202[0-4])', 18, "matriculada en XXXX"),
-            (r'(?:honda|yamaha|kawasaki|kymco|cb|mt|z|pcx|agility)\s+(?:del\s+año\s+|año\s+|de\s+)?(201[3-9]|202[0-4])', 18, "marca/modelo del año"),
+            (r'matriculad[ao]\s+(?:en\s+(?:el\s+año\s+)?)?(?:en\s+)?(201[3-9]|202[0-4])', 18, "matriculada"),
+            (r'(?:honda|yamaha|kawasaki|kymco|cb|mt|z|pcx|agility)\s+(?:del\s+año\s+|año\s+|de\s+)?(201[3-9]|202[0-4])', 18, "marca año"),
             (r'del\s+(201[3-9]|202[0-4])(?!\s*(?:€|euros|km|kms|klm))(?:\s|$|\.|\,)', 14, "del XXXX"),
             (r'\b(201[3-9]|202[0-4])\b(?!\s*(?:€|euros|km|kms|klm|cc|cv|hp|precio))', 8, "año standalone"),
         ]
         
-        # Patrones a excluir
         exclude_patterns = [
             r'(?:itv|itvs)\s+(?:hasta|vigente|válida|pasada|en|del|año|de)\s+(201[3-9]|202[0-4])',
             r'revisión\s+(?:en|del|año|hasta|de)\s+(201[3-9]|202[0-4])',
@@ -433,7 +401,6 @@ class BaseScraper(ABC):
             r'(201[3-9]|202[0-4])cc',
         ]
         
-        # Buscar candidatos de año
         for pattern, score, description in year_patterns:
             matches = re.finditer(pattern, text_normalized)
             for match in matches:
@@ -441,8 +408,7 @@ class BaseScraper(ABC):
                 
                 try:
                     year_value = int(found_year)
-                    if 2013 <= year_value <= 2024:  # Rango válido para motos
-                        # Verificar que no está excluido
+                    if 2013 <= year_value <= 2024:
                         is_excluded = False
                         for exclude_pattern in exclude_patterns:
                             if re.search(exclude_pattern, match.group(0)):
@@ -457,24 +423,22 @@ class BaseScraper(ABC):
                 except ValueError:
                     continue
         
-        # Seleccionar el año más conservador (menor)
         if all_year_candidates:
             year = min(candidate['year'] for candidate in all_year_candidates)
         
-        # ===== EXTRACCIÓN DE KILÓMETROS =====
+        # EXTRACCIÓN DE KILÓMETROS
         km = "No especificado"
         all_km_candidates = []
         
         km_patterns = [
-            # Patrones prioritarios específicos
-            r'km\s*[:\-]\s*(\d{1,3})\.(\d{3})',  # km: 10.500
-            r'kilómetros?\s*[:\-]\s*(\d{1,3})\.(\d{3})',  # kilómetros: 10.500
-            r'km\s*[:\-]\s*(\d+)',  # km: 0 (permitir 0)
-            r'(\d{1,3})\.(\d{3})\s*km',  # 10.500 km
-            r'(\d+)\s*km',  # 0 km (permitir 0)
-            r'(?:solo|tiene|lleva|marca)\s+(\d{1,3})\.(\d{3})',  # solo 10.500
-            r'(?:solo|tiene|lleva|marca)\s+(\d+)',  # solo 0
-            r'(\d+)\s*mil\s*km',  # 10 mil km
+            r'km\s*[:\-]\s*(\d{1,3})\.(\d{3})',
+            r'kilómetros?\s*[:\-]\s*(\d{1,3})\.(\d{3})',
+            r'km\s*[:\-]\s*(\d+)',
+            r'(\d{1,3})\.(\d{3})\s*km',
+            r'(\d+)\s*km',
+            r'(?:solo|tiene|lleva|marca)\s+(\d{1,3})\.(\d{3})',
+            r'(?:solo|tiene|lleva|marca)\s+(\d+)',
+            r'(\d+)\s*mil\s*km',
         ]
         
         for pattern in km_patterns:
@@ -491,10 +455,8 @@ class BaseScraper(ABC):
                         if 'mil' in pattern:
                             km_value = int(groups[0]) * 1000 + int(groups[1])
                         else:
-                            # Formato español (punto como separador miles)
                             km_value = int(groups[0] + groups[1])
                     
-                    # Permitir km = 0 y hasta 200,000 km
                     if 0 <= km_value <= 200000:
                         all_km_candidates.append({
                             'value': km_value,
@@ -504,9 +466,7 @@ class BaseScraper(ABC):
                 except (ValueError, TypeError):
                     continue
         
-        # Seleccionar el KM más alto (más conservador)
         if all_km_candidates:
-            # Filtrar contextos obviamente incorrectos
             exclude_km_keywords = ['rueda', 'neumático', 'revisión', 'service', 'velocidad', 'hora']
             valid_candidates = []
             
@@ -547,7 +507,6 @@ class BaseScraper(ABC):
         
         ubicacion = self._extract_text_by_selectors(selectors, "No especificado")
         
-        # Limpiar ubicación
         if ubicacion and ubicacion != "No especificado":
             ubicacion = ubicacion.replace("en ", "").strip()
         
@@ -568,7 +527,7 @@ class BaseScraper(ABC):
         """Extraer texto usando múltiples selectores con timeout corto"""
         for selector in selectors:
             try:
-                element = WebDriverWait(self.driver, 1).until(  # Timeout muy corto
+                element = WebDriverWait(self.driver, 1).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, selector))
                 )
                 text = element.text.strip()
@@ -583,7 +542,6 @@ class BaseScraper(ABC):
         if not url or '/item/' not in url:
             return False
         
-        # Filtrar URLs no deseadas
         excluded_patterns = [
             'promoted',
             'destacado', 
@@ -597,7 +555,6 @@ class BaseScraper(ABC):
         
         return True
     
-    # Métodos abstractos que deben implementar las subclases
     @abstractmethod
     def get_search_urls(self) -> List[str]:
         """Generar URLs de búsqueda específicas del modelo"""
@@ -608,16 +565,11 @@ class BaseScraper(ABC):
         """Validar si los datos de la moto corresponden al modelo específico"""
         pass
 
-# ============================================================================
-# FUNCIONES DE UTILIDAD
-# ============================================================================
-
-def test_base_scraper_actualizado():
-    """Función de prueba para la funcionalidad base actualizada"""
-    print(" Probando funcionalidad base actualizada del scraper...")
+def test_base_scraper():
+    """Función de prueba para la funcionalidad base"""
+    print("Probando funcionalidad base del scraper...")
     
     try:
-        # Crear implementación mínima para prueba
         class TestScraper(BaseScraper):
             def get_search_urls(self):
                 return ["https://es.wallapop.com/app/search?keywords=honda%20cb125r"]
@@ -628,16 +580,15 @@ def test_base_scraper_actualizado():
         scraper = TestScraper('cb125r')
         driver = scraper.setup_driver()
         
-        print(" Driver configurado correctamente")
+        print("Driver configurado correctamente")
         driver.quit()
-        print(" Driver cerrado correctamente")
+        print("Driver cerrado correctamente")
         
         return True
         
     except Exception as e:
-        print(f" Error en prueba: {e}")
+        print(f"Error en prueba: {e}")
         return False
 
 if __name__ == "__main__":
-    # Prueba de la clase base actualizada
-    test_base_scraper_actualizado()
+    test_base_scraper()
