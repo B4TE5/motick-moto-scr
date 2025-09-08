@@ -1,20 +1,20 @@
- """
+"""
 ================================================================================
-                    SCRAPER HONDA CB125R ACTUALIZADO - WALLAPOP MOTOS SCRAPER                    
+                    SCRAPER HONDA CB125R CORREGIDO - WALLAPOP MOTOS SCRAPER                    
 ================================================================================
 
-Scraper específico actualizado para Honda CB125R
-Con selectores reales de Wallapop y extracción robusta optimizada para GitHub Actions
+Scraper específico corregido para Honda CB125R
+Sin problemas de indentación y optimizado para GitHub Actions
 
 Características:
-- Detectión específica de Honda CB125R y variantes
+- Detección específica de Honda CB125R y variantes
 - Filtrado optimizado con selectores reales
 - URLs optimizadas para este modelo específico
 - Validación estricta de marca y modelo
 - Timeouts optimizados para GitHub Actions
 
 Autor: Carlos Peraza
-Versión: 1.1 - Actualizada para Wallapop actual
+Versión: 1.1 - Corregida
 Fecha: Septiembre 2025
 ================================================================================
 """
@@ -25,7 +25,7 @@ from typing import Dict, List, Optional
 from scrapers.base_scraper import BaseScraper
 
 class ScraperCB125R(BaseScraper):
-    """Scraper específico actualizado para Honda CB125R"""
+    """Scraper específico para Honda CB125R"""
     
     def __init__(self):
         super().__init__('cb125r')
@@ -41,14 +41,14 @@ class ScraperCB125R(BaseScraper):
         ]
         
         self.exclude_patterns = [
-            r'\bcb[\-\s]*125[\-\s]*f\b',  # CB125F
-            r'\bcb[\-\s]*250[\-\s]*r\b',  # CB250R
-            r'\bcb[\-\s]*500[\-\s]*r\b',  # CB500R
-            r'\bcb[\-\s]*650[\-\s]*r\b',  # CB650R
-            r'\bcbr[\-\s]*125\b',         # CBR125 (diferente modelo)
-            r'\bcbr\b',                   # CBR en general
-            r'\bcb[\-\s]*600\b',          # CB600
-            r'\bcb[\-\s]*1000\b'          # CB1000
+            r'\bcb[\-\s]*125[\-\s]*f\b',
+            r'\bcb[\-\s]*250[\-\s]*r\b',
+            r'\bcb[\-\s]*500[\-\s]*r\b',
+            r'\bcb[\-\s]*650[\-\s]*r\b',
+            r'\bcbr[\-\s]*125\b',
+            r'\bcbr\b',
+            r'\bcb[\-\s]*600\b',
+            r'\bcb[\-\s]*1000\b'
         ]
         
         self.logger.info(f"Scraper CB125R inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
@@ -60,7 +60,7 @@ class ScraperCB125R(BaseScraper):
         
         urls = []
         
-        # URLs principales más efectivas para CB125R (reducidas para GitHub Actions)
+        # URLs principales más efectivas para CB125R
         base_queries = [
             "honda%20cb125r",
             "honda%20cb%20125%20r", 
@@ -73,7 +73,7 @@ class ScraperCB125R(BaseScraper):
             "honda%20cb125r%202024"
         ]
         
-        # Generar URLs con filtros de precio (solo ordenamiento básico)
+        # Generar URLs con filtros de precio
         for query in base_queries:
             # URL básica con filtro de precio
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}")
@@ -91,27 +91,16 @@ class ScraperCB125R(BaseScraper):
                 seen.add(url)
         
         # Limitar URLs para GitHub Actions
-        max_urls = 8 if self._is_github_actions() else len(unique_urls)
+        import os
+        is_github = os.getenv("GITHUB_ACTIONS") == "true"
+        max_urls = 8 if is_github else len(unique_urls)
         final_urls = unique_urls[:max_urls]
         
         self.logger.info(f"{len(final_urls)} URLs generadas para CB125R")
         return final_urls
     
-    def _is_github_actions(self) -> bool:
-        """Detectar si se ejecuta en GitHub Actions"""
-        import os
-        return os.getenv("GITHUB_ACTIONS") == "true"
-    
     def validate_moto_data(self, moto_data: Dict) -> bool:
-        """
-        Validar si los datos corresponden realmente a una Honda CB125R
-        
-        Args:
-            moto_data: Diccionario con datos de la moto
-            
-        Returns:
-            bool: True si es válida CB125R
-        """
+        """Validar si los datos corresponden realmente a una Honda CB125R"""
         try:
             titulo = moto_data.get('Título', '').lower()
             descripcion = moto_data.get('Descripcion', '').lower()
@@ -155,7 +144,7 @@ class ScraperCB125R(BaseScraper):
         """Verificar si es marca Honda"""
         honda_patterns = [
             r'\bhonda\b',
-            r'\bhond\b',  # Error común
+            r'\bhond\b',
         ]
         
         for pattern in honda_patterns:
@@ -182,7 +171,7 @@ class ScraperCB125R(BaseScraper):
         return False
     
     def _is_excluded_model(self, text: str) -> bool:
-        """Verificar si es un modelo excluido (CB125F, CB250R, etc.)"""
+        """Verificar si es un modelo excluido"""
         for pattern in self.exclude_patterns:
             if re.search(pattern, text):
                 return True
@@ -191,27 +180,25 @@ class ScraperCB125R(BaseScraper):
     def _is_valid_price_range(self, precio_text: str) -> bool:
         """Validar si el precio está en el rango esperado para CB125R"""
         if not precio_text or precio_text == "No especificado":
-            return True  # Aceptar si no hay precio
+            return True
         
         try:
-            # Extraer números del precio
             price_numbers = re.findall(r'\d+', precio_text.replace('.', '').replace(',', '').replace(' ', ''))
             if price_numbers:
                 price = int(''.join(price_numbers))
                 min_price = self.modelo_config['precio_min']
                 max_price = self.modelo_config['precio_max']
                 
-                # Rango específico para CB125R: 1000€ - 4500€
                 return min_price <= price <= max_price
         except:
             pass
         
-        return True  # Aceptar si no se puede parsear
+        return True
     
     def _is_valid_year_range(self, año_text: str) -> bool:
         """Validar si el año está en el rango esperado para CB125R"""
         if not año_text or año_text == "No especificado":
-            return True  # Aceptar si no hay año
+            return True
         
         try:
             year_match = re.search(r'(20[0-9]{2})', str(año_text))
@@ -220,36 +207,32 @@ class ScraperCB125R(BaseScraper):
                 min_year = self.modelo_config['año_min']
                 max_year = self.modelo_config['año_max']
                 
-                # Rango específico para CB125R: 2018-2025
                 return min_year <= year <= max_year
         except:
             pass
         
-        return True  # Aceptar si no se puede parsear
-    
-    # Métodos de extracción específicos para CB125R (heredan de base_scraper actualizado)
+        return True
     
     def extract_titulo(self) -> str:
-        """Extraer título específico para CB125R usando método actualizado"""
+        """Extraer título específico para CB125R"""
         return self.extract_titulo_wallapop()
     
     def extract_precio(self) -> str:
-        """Extraer precio específico para CB125R usando método actualizado"""
+        """Extraer precio específico para CB125R"""
         return self.extract_precio_wallapop()
     
     def extract_kilometraje(self) -> str:
-        """Extraer kilometraje usando función robusta actualizada"""
+        """Extraer kilometraje usando función robusta"""
         return self.extract_kilometraje_wallapop()
     
     def extract_año(self) -> str:
-        """Extraer año usando función robusta actualizada"""
+        """Extraer año usando función robusta"""
         return self.extract_año_wallapop()
     
     def extract_vendedor(self) -> str:
         """Extraer vendedor con detección de comerciales específicos"""
         vendedor = self.extract_vendedor_wallapop()
         
-        # Detectar si es comercial (específico para CB125R)
         if vendedor and vendedor != "Particular":
             commercial_keywords = ['concesionario', 'motor', 'moto', 'honda', 'taller', 'cb125r', 'cb', '125']
             if any(word in vendedor.lower() for word in commercial_keywords):
@@ -269,20 +252,16 @@ class ScraperCB125R(BaseScraper):
         """Extraer descripción usando método actualizado"""
         return self.extract_descripcion_wallapop()
 
-# ============================================================================
-# FUNCIÓN PRINCIPAL
-# ============================================================================
-
 def run_cb125r_scraper():
-    """Función principal para ejecutar el scraper actualizado de CB125R"""
+    """Función principal para ejecutar el scraper de CB125R"""
     try:
-        print(" Iniciando scraper Honda CB125R actualizado...")
+        print("Iniciando scraper Honda CB125R...")
         
         scraper = ScraperCB125R()
         df_results = scraper.scrape_model()
         
         if not df_results.empty:
-            print(f" Scraping CB125R completado: {len(df_results)} motos encontradas")
+            print(f"Scraping CB125R completado: {len(df_results)} motos encontradas")
             
             # Mostrar estadísticas de calidad
             total = len(df_results)
@@ -290,31 +269,30 @@ def run_cb125r_scraper():
             km_ok = len(df_results[df_results['Kilometraje'] != 'No especificado'])
             años_ok = len(df_results[df_results['Año'] != 'No especificado'])
             
-            print(f" Calidad de extracción:")
-            print(f"   • Precios: {precios_ok}/{total} ({precios_ok/total*100:.1f}%)")
-            print(f"   • Kilometraje: {km_ok}/{total} ({km_ok/total*100:.1f}%)")
-            print(f"   • Años: {años_ok}/{total} ({años_ok/total*100:.1f}%)")
+            print(f"Calidad de extracción:")
+            print(f"   Precios: {precios_ok}/{total} ({precios_ok/total*100:.1f}%)")
+            print(f"   Kilometraje: {km_ok}/{total} ({km_ok/total*100:.1f}%)")
+            print(f"   Años: {años_ok}/{total} ({años_ok/total*100:.1f}%)")
             
             return df_results
         else:
-            print(" No se encontraron motos CB125R")
+            print("No se encontraron motos CB125R")
             return df_results
             
     except Exception as e:
-        print(f" Error en scraper CB125R: {e}")
+        print(f"Error en scraper CB125R: {e}")
         import traceback
         traceback.print_exc()
         return None
 
 if __name__ == "__main__":
-    # Ejecutar scraper directamente
     import sys
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     
     results = run_cb125r_scraper()
     if results is not None and not results.empty:
-        print(f"\n Primeras 3 motos encontradas:")
+        print(f"\nPrimeras 3 motos encontradas:")
         for i, (_, moto) in enumerate(results.head(3).iterrows()):
             print(f"   {i+1}. {moto['Título'][:40]}...")
-            print(f"       {moto['Precio']} |  {moto['Ubicación']} |  {moto['Año']}")
+            print(f"      {moto['Precio']} | {moto['Ubicación']} | {moto['Año']}")
