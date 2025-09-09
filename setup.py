@@ -1,14 +1,12 @@
 """
 ================================================================================
-                    SETUP.PY - WALLAPOP MOTOS SCRAPER                    
+                                     SETUP                
 ================================================================================
-
-Script de configuración para instalación del proyecto
-Permite instalar el proyecto como un paquete Python
 
 Autor: Carlos Peraza
 Versión: 1.0
-Fecha: Septiembre 2025
+Fecha: Agosto 2025
+
 ================================================================================
 """
 
