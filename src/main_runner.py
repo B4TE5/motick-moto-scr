@@ -1,19 +1,12 @@
 """
 ================================================================================
-                    MAIN RUNNER - WALLAPOP MOTOS SCRAPER                    
+                                MAIN RUNNER                  
 ================================================================================
 
-Script principal que coordina todo el proceso de scraping:
-1. Scraping del modelo específico
-2. Limpieza automática de datos  
-3. Cálculo de rentabilidad
-4. Subida a Google Sheets
-
-Se ejecuta desde GitHub Actions con el modelo como parámetro
-
 Autor: Carlos Peraza
-Versión: 1.0
+Versión: 2.0
 Fecha: Septiembre 2025
+
 ================================================================================
 """
 
@@ -28,13 +21,13 @@ from typing import Optional
 # Configurar path para imports
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from config import get_modelo_config, get_all_modelos, LOGGING_CONFIG
+from config import get_modelo_config, get_all_modelos, LOGGING_CONFIG, get_timeout_config
 from google_sheets_manager import GoogleSheetsManager, test_google_sheets_connection
 from rentabilidad_calculator import RentabilidadCalculator
 from limpiador_integrado import LimpiadorIntegrado
 
 class MainRunner:
-    """Coordinador principal del sistema de scraping"""
+    """Coordinador principal del sistema de scraping CORREGIDO"""
     
     def __init__(self, modelo_key: str, test_mode: bool = False):
         """
@@ -47,14 +40,17 @@ class MainRunner:
         self.modelo_key = modelo_key
         self.test_mode = test_mode
         self.modelo_config = get_modelo_config(modelo_key)
+        self.timeout_config = get_timeout_config()
         
         # Configurar logging
         self._setup_logging()
         self.logger = logging.getLogger(__name__)
         
-        self.logger.info(f" MainRunner iniciado para {self.modelo_config['nombre']}")
+        self.logger.info(f"MainRunner iniciado para {self.modelo_config['nombre']}")
         if test_mode:
-            self.logger.info(" Modo de prueba activado")
+            self.logger.info("Modo de prueba activado - TIMEOUTS REDUCIDOS")
+        else:
+            self.logger.info(f"Modo completo activado - TIEMPO MAXIMO: {self.timeout_config['max_total_scraping_time']/3600:.1f} horas")
     
     def _setup_logging(self):
         """Configurar sistema de logging"""
@@ -81,79 +77,80 @@ class MainRunner:
             bool: True si fue exitoso
         """
         try:
-            self.logger.info(f" Iniciando proceso completo para {self.modelo_config['nombre']}")
+            self.logger.info(f"Iniciando proceso completo EXTENDIDO para {self.modelo_config['nombre']}")
             
-            # PASO 1: Scraping
-            self.logger.info(" PASO 1: Ejecutando scraping...")
-            df_raw = self._execute_scraping()
+            # PASO 1: Scraping EXTENDIDO
+            self.logger.info("PASO 1: Ejecutando scraping EXTENDIDO...")
+            df_raw = self._execute_scraping_extended()
             
             if df_raw is None or df_raw.empty:
-                self.logger.warning(" No se obtuvieron datos del scraping")
+                self.logger.warning("No se obtuvieron datos del scraping")
                 return False
             
-            self.logger.info(f" Scraping completado: {len(df_raw)} motos encontradas")
+            self.logger.info(f"Scraping completado: {len(df_raw)} motos encontradas")
             
             # PASO 2: Limpieza
-            self.logger.info(" PASO 2: Limpiando datos...")
+            self.logger.info("PASO 2: Limpiando datos...")
             df_clean, clean_stats = self._clean_data(df_raw)
             
             if df_clean.empty:
-                self.logger.warning(" No quedaron datos después de la limpieza")
+                self.logger.warning("No quedaron datos después de la limpieza")
                 return False
             
-            self.logger.info(f" Limpieza completada: {len(df_clean)} motos válidas")
+            self.logger.info(f"Limpieza completada: {len(df_clean)} motos válidas")
             
-            # PASO 3: Cálculo de rentabilidad
-            self.logger.info(" PASO 3: Calculando rentabilidad...")
-            df_final = self._calculate_rentabilidad(df_clean)
+            # PASO 3: Cálculo de rentabilidad SIMPLIFICADO
+            self.logger.info("PASO 3: Calculando rentabilidad...")
+            df_final = self._calculate_rentabilidad_simplified(df_clean)
             
-            self.logger.info(f" Rentabilidad calculada para {len(df_final)} motos")
+            self.logger.info(f"Rentabilidad calculada para {len(df_final)} motos")
             
             # PASO 4: Guardar resultados locales (opcional)
             if not self.test_mode:
                 self._save_local_results(df_final)
             
-            # PASO 5: Subir a Google Sheets
-            self.logger.info(" PASO 5: Subiendo a Google Sheets...")
-            success = self._upload_to_sheets(df_final)
+            # PASO 5: Subir a Google Sheets CON FORMATO CORRECTO
+            self.logger.info("PASO 5: Subiendo a Google Sheets con formato correcto...")
+            success = self._upload_to_sheets_formatted(df_final)
             
             if success:
-                self.logger.info(" Proceso completado exitosamente")
+                self.logger.info("Proceso completado exitosamente")
                 self._log_final_summary(df_raw, df_clean, df_final, clean_stats)
                 return True
             else:
-                self.logger.error(" Error subiendo a Google Sheets")
+                self.logger.error("Error subiendo a Google Sheets")
                 return False
                 
         except Exception as e:
-            self.logger.error(f" Error crítico en proceso principal: {e}")
+            self.logger.error(f"Error crítico en proceso principal: {e}")
             return False
     
-    def _execute_scraping(self) -> Optional[pd.DataFrame]:
-        """Ejecutar scraping según el modelo específico"""
+    def _execute_scraping_extended(self) -> Optional[pd.DataFrame]:
+        """Ejecutar scraping EXTENDIDO según el modelo específico"""
         try:
             # Importar scraper específico dinámicamente
             scraper_module = self._import_scraper_module()
             if not scraper_module:
                 return None
             
-            # Ejecutar scraper
+            # Ejecutar scraper con configuración extendida
             scraper_class = getattr(scraper_module, f"Scraper{self.modelo_key.upper()}")
             scraper = scraper_class()
             
-            # Ejecutar scraping
+            # EJECUCION CON TIMEOUTS EXTENDIDOS
             if self.test_mode:
-                self.logger.info(" Modo prueba: limitando resultados")
+                self.logger.info("Modo prueba: limitando resultados pero usando selectores corregidos")
                 df_results = scraper.scrape_model()
-                # Limitar a 10 resultados en modo prueba
+                # Limitar a 20 resultados en modo prueba (vs 10 original)
                 if not df_results.empty:
-                    df_results = df_results.head(10)
+                    df_results = df_results.head(20)
                 return df_results
             else:
+                self.logger.info("Modo completo: scraping EXTENDIDO iniciado")
                 return scraper.scrape_model()
                 
         except Exception as e:
-            self.logger.error(f" Error ejecutando scraping: {e}")
+            self.logger.error(f"Error ejecutando scraping: {e}")
             return None
     
     def _import_scraper_module(self):
@@ -163,11 +160,11 @@ class MainRunner:
             module = __import__(module_name, fromlist=[f"Scraper{self.modelo_key.upper()}"])
             return module
         except ImportError as e:
-            self.logger.error(f" No se pudo importar scraper para {self.modelo_key}: {e}")
+            self.logger.error(f"No se pudo importar scraper para {self.modelo_key}: {e}")
             
             # Lista de scrapers disponibles para debugging
             available_scrapers = self._get_available_scrapers()
-            self.logger.info(f" Scrapers disponibles: {available_scrapers}")
+            self.logger.info(f"Scrapers disponibles: {available_scrapers}")
             return None
     
     def _get_available_scrapers(self) -> list:
@@ -189,17 +186,44 @@ class MainRunner:
             limpiador = LimpiadorIntegrado(self.modelo_key)
             return limpiador.clean_data(df_raw)
         except Exception as e:
-            self.logger.error(f" Error limpiando datos: {e}")
+            self.logger.error(f"Error limpiando datos: {e}")
             return df_raw, {}
     
-    def _calculate_rentabilidad(self, df_clean: pd.DataFrame) -> pd.DataFrame:
-        """Calcular rentabilidad y ordenar"""
+    def _calculate_rentabilidad_simplified(self, df_clean: pd.DataFrame) -> pd.DataFrame:
+        """Calcular rentabilidad SIMPLIFICADA y ordenar"""
         try:
             calculator = RentabilidadCalculator(self.modelo_key)
-            return calculator.calculate_rentabilidad(df_clean)
+            df_with_score = calculator.calculate_rentabilidad(df_clean)
+            
+            # SIMPLIFICAR RENTABILIDAD: convertir score a categoría simple
+            if 'Rentabilidad_Score' in df_with_score.columns:
+                df_with_score['Rentabilidad'] = df_with_score['Rentabilidad_Score'].apply(self._score_to_category)
+            else:
+                df_with_score['Rentabilidad'] = 'No calculada'
+            
+            return df_with_score
+            
         except Exception as e:
-            self.logger.error(f" Error calculando rentabilidad: {e}")
+            self.logger.error(f"Error calculando rentabilidad: {e}")
             return df_clean
+    
+    def _score_to_category(self, score) -> str:
+        """Convertir score numérico a categoría simple"""
+        if pd.isna(score):
+            return "No calculada"
+        
+        try:
+            score_value = float(score)
+            if score_value >= 8:
+                return "Excelente"
+            elif score_value >= 6:
+                return "Buena"
+            elif score_value >= 4:
+                return "Regular"
+            else:
+                return "Baja"
+        except:
+            return "No calculada"
     
     def _save_local_results(self, df_final: pd.DataFrame):
         """Guardar resultados localmente"""
@@ -213,58 +237,134 @@ class MainRunner:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"{results_dir}/{self.modelo_key}_{timestamp}.xlsx"
             
+            # Formatear DataFrame antes de guardar
+            df_formatted = self._format_dataframe_for_save(df_final)
+            
             # Guardar Excel
-            df_final.to_excel(filename, index=False)
-            self.logger.info(f" Resultados guardados localmente: {filename}")
+            df_formatted.to_excel(filename, index=False)
+            self.logger.info(f"Resultados guardados localmente: {filename}")
             
         except Exception as e:
-            self.logger.warning(f" Error guardando resultados locales: {e}")
+            self.logger.warning(f"Error guardando resultados locales: {e}")
     
-    def _upload_to_sheets(self, df_final: pd.DataFrame) -> bool:
-        """Subir datos a Google Sheets"""
+    def _format_dataframe_for_save(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Formatear DataFrame con orden correcto de columnas"""
+        # ORDEN CORRECTO DE COLUMNAS
+        desired_columns = [
+            'Título',
+            'Precio', 
+            'Kilometraje',
+            'Año',
+            'Rentabilidad',           # Categoría simple
+            'Vendedor',
+            'Ubicación',
+            'Fecha_Publicacion',
+            'URL',
+            'Fecha_Extraccion'
+        ]
+        
+        # COLUMNAS A ELIMINAR (no deseadas)
+        columns_to_remove = [
+            'Rentabilidad_Score',
+            'Ranking_Rentabilidad', 
+            'Descripcion',
+            'Categoria_Rentabilidad'
+        ]
+        
+        # Crear copia y eliminar columnas no deseadas
+        df_clean = df.copy()
+        for col in columns_to_remove:
+            if col in df_clean.columns:
+                df_clean = df_clean.drop(columns=[col])
+        
+        # Reordenar columnas
+        final_columns = []
+        for col in desired_columns:
+            if col in df_clean.columns:
+                final_columns.append(col)
+        
+        # Añadir cualquier columna restante
+        for col in df_clean.columns:
+            if col not in final_columns:
+                final_columns.append(col)
+        
+        return df_clean[final_columns]
+    
+    def _upload_to_sheets_formatted(self, df_final: pd.DataFrame) -> bool:
+        """Subir datos a Google Sheets CON FORMATO CORRECTO"""
         try:
             # Crear manager de Google Sheets
             sheets_manager = GoogleSheetsManager()
             
-            # Subir datos del modelo
-            sheet_name = self.modelo_config['sheet_name']
+            # NOMBRE DE HOJA CORREGIDO: CB125R 08/09/25 (no Honda_CB125R)
+            modelo_simple = self._get_simple_model_name(self.modelo_key)
+            fecha_actual = datetime.now().strftime("%d/%m/%y")
+            sheet_name_correcto = f"{modelo_simple} {fecha_actual}"
+            
+            # Subir datos del modelo CON FORMATO CORRECTO
             success = sheets_manager.upload_modelo_data(
                 self.modelo_key,
                 df_final,
-                sheet_name,
+                sheet_name=sheet_name_correcto,  # Usar nombre correcto
                 overwrite=True
             )
             
+            # NO CREAR HOJA RESUMEN (según requerimientos)
+            # sheets_manager.create_summary_sheet()  # DESHABILITADO
+            
             if success:
-                # Actualizar hoja resumen
-                sheets_manager.create_summary_sheet()
+                self.logger.info(f"Datos subidos exitosamente a hoja: '{sheet_name_correcto}'")
             
             return success
             
         except Exception as e:
-            self.logger.error(f" Error subiendo a Google Sheets: {e}")
+            self.logger.error(f"Error subiendo a Google Sheets: {e}")
             return False
+    
+    def _get_simple_model_name(self, modelo_key: str) -> str:
+        """Obtener nombre simple del modelo para la hoja"""
+        model_names = {
+            'cb125r': 'CB125R',      # CORREGIDO: CB125R no CBR125R
+            'pcx125': 'PCX125', 
+            'agility125': 'AGILITY125',
+            'z900': 'Z900',
+            'mt07': 'MT07'
+        }
+        
+        return model_names.get(modelo_key, modelo_key.upper())
     
     def _log_final_summary(self, df_raw: pd.DataFrame, df_clean: pd.DataFrame, 
                           df_final: pd.DataFrame, clean_stats: dict):
         """Registrar resumen final del proceso"""
         self.logger.info("=" * 70)
-        self.logger.info(f" RESUMEN FINAL - {self.modelo_config['nombre']}")
+        self.logger.info(f"RESUMEN FINAL - {self.modelo_config['nombre']}")
         self.logger.info("=" * 70)
-        self.logger.info(f" Motos extraídas: {len(df_raw)}")
-        self.logger.info(f" Motos después de limpieza: {len(df_clean)}")
-        self.logger.info(f" Motos con rentabilidad: {len(df_final)}")
-        self.logger.info(f" Precio mínimo aplicado: {clean_stats.get('precio_minimo', 'N/A')}€")
-        self.logger.info(f" KM máximo aplicado: {clean_stats.get('km_maximo', 'N/A')}")
+        self.logger.info(f"Motos extraídas: {len(df_raw)}")
+        self.logger.info(f"Motos después de limpieza: {len(df_clean)}")
+        self.logger.info(f"Motos con rentabilidad: {len(df_final)}")
+        self.logger.info(f"Precio mínimo aplicado: {clean_stats.get('precio_minimo', 'N/A')}€")
+        self.logger.info(f"KM máximo aplicado: {clean_stats.get('km_maximo', 'N/A')}")
         
-        if not df_final.empty and 'Rentabilidad_Score' in df_final.columns:
-            top_3 = df_final.head(3)
-            self.logger.info(f" TOP 3 MÁS RENTABLES:")
-            for i, (_, moto) in enumerate(top_3.iterrows(), 1):
-                titulo = moto.get('Título', 'Sin título')[:40]
-                score = moto.get('Rentabilidad_Score', 0)
-                precio = moto.get('Precio', 'N/A')
-                self.logger.info(f"   {i}. {titulo} - Score: {score:.2f} - {precio}")
+        if not df_final.empty:
+            # Mostrar estadísticas de extracción
+            titulos_extraidos = len(df_final[df_final['Título'] != 'Sin título'])
+            km_extraidos = len(df_final[df_final['Kilometraje'] != 'No especificado'])
+            años_extraidos = len(df_final[df_final['Año'] != 'No especificado'])
+            
+            self.logger.info(f"ESTADÍSTICAS DE EXTRACCIÓN:")
+            self.logger.info(f"   Títulos extraídos: {titulos_extraidos}/{len(df_final)} ({titulos_extraidos/len(df_final)*100:.1f}%)")
+            self.logger.info(f"   Kilometrajes extraídos: {km_extraidos}/{len(df_final)} ({km_extraidos/len(df_final)*100:.1f}%)")
+            self.logger.info(f"   Años extraídos: {años_extraidos}/{len(df_final)} ({años_extraidos/len(df_final)*100:.1f}%)")
+            
+            # Mostrar top 3 si hay rentabilidad
+            if 'Rentabilidad' in df_final.columns:
+                top_3 = df_final.head(3)
+                self.logger.info(f"TOP 3 MÁS RENTABLES:")
+                for i, (_, moto) in enumerate(top_3.iterrows(), 1):
+                    titulo = moto.get('Título', 'Sin título')[:40]
+                    rentabilidad = moto.get('Rentabilidad', 'N/A')
+                    precio = moto.get('Precio', 'N/A')
+                    self.logger.info(f"   {i}. {titulo} - {rentabilidad} - {precio}")
         
         self.logger.info("=" * 70)
 
@@ -274,13 +374,13 @@ class MainRunner:
 
 def test_connection():
     """Probar conexión a Google Sheets"""
-    print(" Probando conexión a Google Sheets...")
+    print("Probando conexión a Google Sheets...")
     return test_google_sheets_connection()
 
 def list_available_models():
     """Listar modelos disponibles"""
     models = get_all_modelos()
-    print(" Modelos disponibles:")
+    print("Modelos disponibles:")
     for model in models:
         config = get_modelo_config(model)
         print(f"   • {model}: {config['nombre']} ({config['tipo']})")
@@ -300,7 +400,7 @@ def run_model(modelo_key: str, test_mode: bool = False) -> bool:
         runner = MainRunner(modelo_key, test_mode)
         return runner.run()
     except Exception as e:
-        print(f" Error ejecutando modelo {modelo_key}: {e}")
+        print(f"Error ejecutando modelo {modelo_key}: {e}")
         return False
 
 # ============================================================================
@@ -309,7 +409,7 @@ def run_model(modelo_key: str, test_mode: bool = False) -> bool:
 
 def main():
     """Función principal con argumentos de línea de comandos"""
-    parser = argparse.ArgumentParser(description="Wallapop Motos Scraper")
+    parser = argparse.ArgumentParser(description="Wallapop Motos Scraper CORREGIDO")
     parser.add_argument("modelo", nargs="?", help="Modelo a scrapear (ej: cb125r)")
     parser.add_argument("--test", action="store_true", help="Ejecutar en modo prueba")
     parser.add_argument("--list", action="store_true", help="Listar modelos disponibles")
@@ -327,7 +427,7 @@ def main():
         return
     
     if not args.modelo:
-        print(" Error: Debe especificar un modelo")
+        print("Error: Debe especificar un modelo")
         print("Uso: python main_runner.py <modelo> [--test]")
         print("Ejemplo: python main_runner.py cb125r --test")
         list_available_models()
@@ -335,22 +435,28 @@ def main():
     
     # Validar modelo
     if args.modelo not in get_all_modelos():
-        print(f" Error: Modelo '{args.modelo}' no válido")
+        print(f"Error: Modelo '{args.modelo}' no válido")
         list_available_models()
         return
     
+    # Mostrar configuración de timeouts
+    timeout_config = get_timeout_config()
+    print(f"Configuración de timeouts:")
+    print(f"   Tiempo máximo total: {timeout_config['max_total_scraping_time']/3600:.1f} horas")
+    print(f"   Tiempo máximo por URL: {timeout_config['max_time_per_url']/60:.1f} minutos")
+    
     # Ejecutar scraping
-    print(f" Iniciando scraping para {args.modelo}")
+    print(f"Iniciando scraping EXTENDIDO para {args.modelo}")
     if args.test:
-        print(" Modo de prueba activado")
+        print("Modo de prueba activado")
     
     success = run_model(args.modelo, args.test)
     
     if success:
-        print(" Proceso completado exitosamente")
+        print("Proceso completado exitosamente")
         sys.exit(0)
     else:
-        print(" Proceso falló")
+        print("Proceso falló")
         sys.exit(1)
 
 if __name__ == "__main__":
