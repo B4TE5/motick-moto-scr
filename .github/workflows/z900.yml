@@ -17,7 +17,7 @@ on:
 jobs:
   scrape-z900:
     runs-on: ubuntu-latest
-    timeout-minutes: 300  # 5 horas máximo (CORREGIDO de 60 a 300)
+    timeout-minutes: 354  # 5 horas máximo (CORREGIDO de 60 a 300)
     
     steps:
     - name: Checkout Repository
