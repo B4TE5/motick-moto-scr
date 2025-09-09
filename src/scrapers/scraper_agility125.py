@@ -1,6 +1,6 @@
 """
 ================================================================================
-                              SCRAPER YAMAHA MT-07                    
+                          SCRAPER KYMCO AGILITY125                  
 ================================================================================
 
 Autor: Carlos Peraza
@@ -15,41 +15,37 @@ import logging
 from typing import Dict, List, Optional
 from scrapers.base_scraper import BaseScraper
 
-class ScraperMT07(BaseScraper):
-    """Scraper específico para Yamaha MT-07"""
+class ScraperAGILITY125(BaseScraper):
+    """Scraper específico para Kymco Agility125"""
     
     def __init__(self):
-        super().__init__('mt07')
+        super().__init__('agility125')
         self.logger = logging.getLogger(__name__)
         
         # Configuración específica del modelo
         self.model_patterns = [
-            r'\bmt[\-\s]*07\b',
-            r'\bmt[\-\s]*7\b',
-            r'\bmt\s*07\b',
-            r'\bmt\s*7\b',
-            r'\bmt\s*[\-\.\/]\s*07\b',
-            r'\bmt\s*[\-\.\/]\s*7\b',
-            r'\bm[\-\s]*t[\-\s]*07\b',
-            r'\bm[\-\s]*t[\-\s]*7\b'
+            r'\bagility[\-\s]*125\b',
+            r'\bagility\s*125\b',
+            r'\bagility\s*[\-\.\/]\s*125\b',
+            r'\ba[\-\s]*g[\-\s]*i[\-\s]*l[\-\s]*i[\-\s]*t[\-\s]*y[\-\s]*125\b'
         ]
         
         self.exclude_patterns = [
-            r'\bmt[\-\s]*03\b',   # MT-03
-            r'\bmt[\-\s]*09\b',   # MT-09
-            r'\bmt[\-\s]*10\b',   # MT-10
-            r'\bmt[\-\s]*125\b',  # MT-125
-            r'\bmt[\-\s]*15\b',   # MT-15
-            r'\btracer\b',        # Tracer (basada en MT pero diferente)
-            r'\bxmax\b',          # XMAX
-            r'\btmax\b',          # TMAX
-            r'\bfz[\-\s]*\d+\b'   # FZ series
+            r'\bagility[\-\s]*50\b',   # Agility 50
+            r'\bagility[\-\s]*16\b',   # Agility 16
+            r'\bagility[\-\s]*200\b',  # Agility 200
+            r'\bagility[\-\s]*150\b',  # Agility 150
+            r'\bpeople\b',             # People (otro modelo Kymco)
+            r'\bsuper[\-\s]*8\b',      # Super 8
+            r'\bdowntown\b',           # Downtown
+            r'\bxciting\b',            # Xciting
+            r'\bmyroad\b'              # MyRoad
         ]
         
-        self.logger.info(f"Scraper MT-07 inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
+        self.logger.info(f"Scraper Agility125 inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
     
     def get_search_urls(self) -> List[str]:
-        """Generar URLs de búsqueda optimizadas para Yamaha MT-07 - VERSIÓN EXTENDIDA"""
+        """Generar URLs de búsqueda optimizadas para Kymco Agility125 - VERSIÓN EXTENDIDA"""
         min_price = self.modelo_config['precio_min']
         max_price = self.modelo_config['precio_max']
         
@@ -57,38 +53,37 @@ class ScraperMT07(BaseScraper):
         
         # 1. BÚSQUEDAS PRINCIPALES BÁSICAS
         base_queries = [
-            "yamaha%20mt07", "yamaha%20mt-07", "yamaha%20mt%2007", "mt07", "mt-07", "mt%2007",
-            "yamaha%20mt07%20naked", "naked%20yamaha%20mt07", "yamaha%20mt%207", "mt%207%20yamaha",
-            "yamaha%20mt%20serie", "naked%20yamaha%20700", "yamaha%20naked%20mt"
+            "kymco%20agility125", "kymco%20agility%20125", "agility125", "agility%20125",
+            "kymco%20agility", "scooter%20kymco%20agility125", "scooter%20kymco%20agility",
+            "kymco%20agility%20scooter", "agility%20kymco", "scooter%20agility125"
         ]
         
         # 2. BÚSQUEDAS POR AÑOS ESPECÍFICOS (2014-2024)
         year_queries = []
         for year in range(2014, 2025):
             year_queries.extend([
-                f"yamaha%20mt07%20{year}",
-                f"mt07%20{year}",
-                f"yamaha%20mt-07%20{year}",
-                f"naked%20yamaha%20{year}%20mt07",
-                f"mt%2007%20{year}",
-                f"yamaha%20{year}%20mt07"
+                f"kymco%20agility125%20{year}",
+                f"agility125%20{year}",
+                f"kymco%20agility%20{year}",
+                f"scooter%20kymco%20{year}%20agility",
+                f"agility%20{year}%20kymco"
             ])
         
         # 3. BÚSQUEDAS POR RANGOS DE PRECIOS
         price_ranges = [
-            (min_price, min_price + 800),
-            (min_price + 600, min_price + 1500),
-            (min_price + 1200, min_price + 2000),
-            (min_price + 1800, max_price)
+            (min_price, min_price + 400),
+            (min_price + 300, min_price + 800),
+            (min_price + 600, min_price + 1200),
+            (min_price + 1000, max_price)
         ]
         
         price_queries = []
         for min_p, max_p in price_ranges:
             price_queries.extend([
-                f"mt07&min_sale_price={min_p}&max_sale_price={max_p}",
-                f"yamaha%20mt07&min_sale_price={min_p}&max_sale_price={max_p}",
-                f"naked%20yamaha&min_sale_price={min_p}&max_sale_price={max_p}",
-                f"yamaha%20naked&min_sale_price={min_p}&max_sale_price={max_p}"
+                f"agility125&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"kymco%20agility&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"scooter%20kymco&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"scooter%20economico&min_sale_price={min_p}&max_sale_price={max_p}"
             ])
         
         # 4. BÚSQUEDAS POR CIUDADES Y REGIONES
@@ -104,50 +99,65 @@ class ScraperMT07(BaseScraper):
             ("las%20palmas", "28.1248", "-15.4300"),
             ("alicante", "38.3452", "-0.4810"),
             ("cordoba", "37.8882", "-4.7794"),
-            ("valladolid", "41.6523", "-4.7245")
+            ("malaga", "36.7196", "-4.4214")
         ]
         
         regional_queries = []
         for city, lat, lng in regions:
             regional_queries.extend([
-                f"mt07&latitude={lat}&longitude={lng}&distance=50000",
-                f"yamaha%20mt07&latitude={lat}&longitude={lng}&distance=50000",
-                f"naked%20yamaha&latitude={lat}&longitude={lng}&distance=75000",
-                f"yamaha%20naked&latitude={lat}&longitude={lng}&distance=75000"
+                f"agility125&latitude={lat}&longitude={lng}&distance=50000",
+                f"kymco%20agility&latitude={lat}&longitude={lng}&distance=50000",
+                f"scooter%20kymco&latitude={lat}&longitude={lng}&distance=75000",
+                f"scooter%20economico&latitude={lat}&longitude={lng}&distance=75000"
             ])
         
         # 5. BÚSQUEDAS CON TÉRMINOS RELACIONADOS
         related_queries = [
-            "naked%20yamaha%20700", "yamaha%20700%20naked", "moto%20naked%20yamaha",
-            "yamaha%20mt%20serie", "yamaha%20roadster", "naked%20yamaha%20media",
-            "yamaha%20mt07%20original", "mt07%20yamaha%20oficial", "naked%20yamaha%20nuevo",
-            "naked%20yamaha%20segunda%20mano", "mt07%20segunda%20mano", "yamaha%20mt07%20usado",
-            "moto%20yamaha%20naked", "roadster%20yamaha", "yamaha%20sport%20naked"
+            "scooter%20125%20kymco", "kymco%20125%20scooter", "scooter%20economico%20kymco",
+            "kymco%20scooter%20125", "moto%20automatica%20kymco", "scooter%20automatico%20kymco",
+            "kymco%20agility%20original", "agility%20kymco%20oficial", "scooter%20kymco%20nuevo",
+            "scooter%20kymco%20segunda%20mano", "agility%20segunda%20mano", "kymco%20agility%20usado",
+            "scooter%20barato%20kymco", "kymco%20economico", "scooter%20kymco%20barato"
         ]
         
         # 6. BÚSQUEDAS CON ERRORES ORTOGRÁFICOS COMUNES
         misspelling_queries = [
-            "yamaha%20mt%200%207", "yamaha%20mt%2070", "mt%2070%20yamaha", "yamaha%20mt%207",
-            "yamaha%20mt07%20modello", "nakeed%20yamaha%20mt07", "mt%2007%20iamaha",
-            "yamaha%20mt%20cero%20siete", "mt%20siete%20yamaha"
+            "kimco%20agility125", "kymco%20agiliti125", "kymco%20agility12", "kimco%20agility%20125",
+            "kymco%20agility%20modelo%20125", "scuter%20kymco%20agility", "escoter%20kymco%20125",
+            "kymco%20agilty125", "agility%20125%20kimco", "kymco%20agiliyt"
         ]
         
         # 7. BÚSQUEDAS CON FILTROS ESPECÍFICOS
         specific_queries = [
-            "mt07%20particular", "mt07%20concesionario", "yamaha%20mt07%20taller",
-            "mt07%20garantia", "yamaha%20mt07%20financiacion", "naked%20yamaha%20ocasion",
-            "mt07%20abs", "yamaha%20mt07%20abs", "naked%20yamaha%20abs"
+            "agility125%20particular", "agility125%20concesionario", "kymco%20agility%20taller",
+            "agility125%20garantia", "kymco%20agility%20financiacion", "scooter%20kymco%20ocasion",
+            "agility125%20barato", "kymco%20agility%20economico", "scooter%20agility%20oferta"
         ]
         
         # 8. BÚSQUEDAS POR CARACTERÍSTICAS TÉCNICAS
         technical_queries = [
-            "yamaha%20700%20bicilindrica", "naked%20700cc%20yamaha", "yamaha%20cp2%20motor",
-            "yamaha%20crossplane%20mt07", "naked%20yamaha%20cp2", "yamaha%20bicilindrica%20naked"
+            "scooter%20125%20automatico%20kymco", "scooter%20125cc%20kymco", "kymco%20125%20automatico",
+            "scooter%20kymco%20cvt", "scooter%20urbano%20kymco", "kymco%20125%20urbano",
+            "scooter%20economico%20125", "moto%20125%20automatica%20kymco"
         ]
         
-        # 9. COMBINAR TODAS LAS QUERIES
+        # 9. BÚSQUEDAS DE VARIANTES ESPECÍFICAS
+        variant_queries = [
+            "agility%20plus", "agility%20city", "kymco%20agility%20plus", "kymco%20agility%20city",
+            "agility%20125%20plus", "agility%20125%20city", "agility%20naked", "agility%20carry"
+        ]
+        
+        # 10. BÚSQUEDAS CON TÉRMINOS DE MERCADO DE SEGUNDA MANO
+        market_queries = [
+            "scooter%20segunda%20mano%20kymco", "kymco%20ocasion", "agility%20ocasion",
+            "scooter%20usado%20kymco", "kymco%20segunda%20mano", "agility%20segunda%20mano",
+            "scooter%20seminuevo%20kymco", "kymco%20seminuevo"
+        ]
+        
+        # 11. COMBINAR TODAS LAS QUERIES
         all_base_queries = (base_queries + year_queries + related_queries + 
-                           misspelling_queries + specific_queries + technical_queries)
+                           misspelling_queries + specific_queries + technical_queries + 
+                           variant_queries + market_queries)
         
         # GENERAR URLS PRINCIPALES
         for query in all_base_queries:
@@ -170,14 +180,14 @@ class ScraperMT07(BaseScraper):
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        # 10. BÚSQUEDAS ESPECÍFICAS SIN FILTRO DE PRECIO (para encontrar ofertas)
-        no_price_queries = ["mt07", "yamaha%20mt07", "naked%20yamaha%20mt"]
+        # 12. BÚSQUEDAS ESPECÍFICAS SIN FILTRO DE PRECIO (para encontrar ofertas)
+        no_price_queries = ["agility125", "kymco%20agility", "scooter%20kymco%20125"]
         for query in no_price_queries:
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=price_low_to_high")
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        # 11. ELIMINAR DUPLICADOS MANTENIENDO ORDEN
+        # 13. ELIMINAR DUPLICADOS MANTENIENDO ORDEN
         unique_urls = []
         seen = set()
         for url in urls:
@@ -185,39 +195,39 @@ class ScraperMT07(BaseScraper):
                 unique_urls.append(url)
                 seen.add(url)
         
-        self.logger.info(f"URLs generadas para MT-07: {len(unique_urls)}")
+        self.logger.info(f"URLs generadas para Agility125: {len(unique_urls)}")
         return unique_urls
     
     def validate_moto_data(self, moto_data: Dict) -> bool:
         """
-        Validar si los datos corresponden realmente a una Yamaha MT-07
+        Validar si los datos corresponden realmente a una Kymco Agility125
         
         Args:
             moto_data: Diccionario con datos de la moto
             
         Returns:
-            bool: True si es válida MT-07
+            bool: True si es válida Agility125
         """
         try:
             titulo = moto_data.get('Título', '').lower()
             descripcion = moto_data.get('Descripcion', '').lower()
             combined_text = f"{titulo} {descripcion}"
             
-            # PASO 1: Verificar que sea Yamaha
-            yamaha_found = self._is_yamaha_brand(combined_text)
-            if not yamaha_found:
-                self.logger.debug("No es Yamaha")
+            # PASO 1: Verificar que sea Kymco
+            kymco_found = self._is_kymco_brand(combined_text)
+            if not kymco_found:
+                self.logger.debug("No es Kymco")
                 return False
             
-            # PASO 2: Verificar modelo MT-07 específico
-            mt07_found = self._is_mt07_model(combined_text)
-            if not mt07_found:
-                self.logger.debug("No es MT-07")
+            # PASO 2: Verificar modelo Agility125 específico
+            agility125_found = self._is_agility125_model(combined_text)
+            if not agility125_found:
+                self.logger.debug("No es Agility125")
                 return False
             
-            # PASO 3: Excluir otros modelos MT de Yamaha
+            # PASO 3: Excluir otros modelos Agility o Kymco
             if self._is_excluded_model(combined_text):
-                self.logger.debug("Es otro modelo MT de Yamaha excluido")
+                self.logger.debug("Es otro modelo Kymco excluido")
                 return False
             
             # PASO 4: Validar precio si está disponible
@@ -230,46 +240,46 @@ class ScraperMT07(BaseScraper):
                 self.logger.debug("Año fuera de rango")
                 return False
             
-            self.logger.debug(f"MT-07 válida: {titulo[:50]}")
+            self.logger.debug(f"Agility125 válida: {titulo[:50]}")
             return True
             
         except Exception as e:
             self.logger.warning(f"Error validando moto: {e}")
             return False
     
-    def _is_yamaha_brand(self, text: str) -> bool:
-        """Verificar si es marca Yamaha"""
-        yamaha_patterns = [
-            r'\byamaha\b',
-            r'\byamha\b',   # Error común
-            r'\bymaha\b',   # Error común
+    def _is_kymco_brand(self, text: str) -> bool:
+        """Verificar si es marca Kymco"""
+        kymco_patterns = [
+            r'\bkymco\b',
+            r'\bkimco\b',  # Error común
+            r'\bkimko\b',  # Error común
         ]
         
-        for pattern in yamaha_patterns:
+        for pattern in kymco_patterns:
             if re.search(pattern, text):
                 return True
         
-        # Si encuentra MT-07 pero no marca, asumir que es Yamaha
-        mt07_patterns = [
-            r'\bmt[\-\s]*07\b',
-            r'\bmt[\-\s]*7\b'
+        # Si encuentra Agility 125 pero no marca, asumir que es Kymco
+        agility_patterns = [
+            r'\bagility[\-\s]*125\b',
+            r'\bagility\s*125\b'
         ]
         
-        for pattern in mt07_patterns:
+        for pattern in agility_patterns:
             if re.search(pattern, text):
                 return True
         
         return False
     
-    def _is_mt07_model(self, text: str) -> bool:
-        """Verificar si es modelo MT-07 específico"""
+    def _is_agility125_model(self, text: str) -> bool:
+        """Verificar si es modelo Agility125 específico"""
         for pattern in self.model_patterns:
             if re.search(pattern, text):
                 return True
         return False
     
     def _is_excluded_model(self, text: str) -> bool:
-        """Verificar si es un modelo excluido (MT-03, MT-09, etc.)"""
+        """Verificar si es un modelo excluido (Agility50, People, etc.)"""
         for pattern in self.exclude_patterns:
             if re.search(pattern, text):
                 return True
@@ -315,21 +325,21 @@ class ScraperMT07(BaseScraper):
 # FUNCIÓN PRINCIPAL
 # ============================================================================
 
-def run_mt07_scraper():
-    """Función principal para ejecutar el scraper de MT-07"""
+def run_agility125_scraper():
+    """Función principal para ejecutar el scraper de Agility125"""
     try:
-        scraper = ScraperMT07()
+        scraper = ScraperAGILITY125()
         df_results = scraper.scrape_model()
         
         if not df_results.empty:
-            print(f"Scraping MT-07 completado: {len(df_results)} motos encontradas")
+            print(f"Scraping Agility125 completado: {len(df_results)} motos encontradas")
             return df_results
         else:
-            print("No se encontraron motos MT-07")
+            print("No se encontraron motos Agility125")
             return df_results
             
     except Exception as e:
-        print(f"Error en scraper MT-07: {e}")
+        print(f"Error en scraper Agility125: {e}")
         return None
 
 if __name__ == "__main__":
@@ -338,7 +348,7 @@ if __name__ == "__main__":
     import os
     sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     
-    results = run_mt07_scraper()
+    results = run_agility125_scraper()
     if results is not None and not results.empty:
         print(f"\nPrimeras 3 motos encontradas:")
         for i, (_, moto) in enumerate(results.head(3).iterrows()):
