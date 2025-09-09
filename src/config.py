@@ -10,20 +10,6 @@ Fecha: Agosto 2025
 ================================================================================
 """
 
-"""
-================================================================================
-                    CONFIGURACION CORREGIDA - WALLAPOP MOTOS SCRAPER                    
-================================================================================
-
-Configuración con timeouts extendidos y ajustes para mejor rendimiento
-Soluciona problemas de ejecución corta y pocos resultados
-
-Autor: Carlos Peraza
-Versión: 2.0 - CORREGIDA COMPLETA
-Fecha: Septiembre 2025
-================================================================================
-"""
-
 import os
 from datetime import datetime
 from typing import List  # ← IMPORT AGREGADO PARA SOLUCIONAR EL ERROR
