@@ -1,6 +1,6 @@
 """
 ================================================================================
-                    RUN ALL MODELS EXTENDIDO - WALLAPOP MOTOS SCRAPER                    
+                                RUN ALL MODELS                  
 ================================================================================
 
 ADVERTENCIA: Con los timeouts extendidos, ejecutar todos los modelos puede tardar 
