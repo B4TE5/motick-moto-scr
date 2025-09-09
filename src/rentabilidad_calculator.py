@@ -1,19 +1,12 @@
 """
 ================================================================================
-                    CALCULADOR DE RENTABILIDAD - WALLAPOP MOTOS SCRAPER                    
+                        CALCULADOR DE RENTABILIDAD                    
 ================================================================================
 
-Sistema de cálculo de rentabilidad para motos basado en precio, kilometraje y año
-Ordena las motos de más a menos rentables según fórmula ponderada
-
-Fórmula de Rentabilidad:
-- Precio (40%): Menor precio = mayor puntuación
-- Kilometraje (35%): Menos km = mayor puntuación  
-- Año (25%): Más reciente = mayor puntuación
-
 Autor: Carlos Peraza
-Versión: 1.0
-Fecha: Septiembre 2025
+Versión: 1.7
+Fecha: Agosto 2025
+
 ================================================================================
 """
 
@@ -26,7 +19,7 @@ from datetime import datetime
 from config import RENTABILIDAD_CONFIG, get_modelo_config
 
 class RentabilidadCalculator:
-    """Calculador de rentabilidad para motos de Wallapop"""
+    """Calculador de rentabilidad simplificado para motos de Wallapop"""
     
     def __init__(self, modelo_key: str):
         """
@@ -39,101 +32,112 @@ class RentabilidadCalculator:
         self.modelo_key = modelo_key
         self.modelo_config = get_modelo_config(modelo_key)
         self.pesos = RENTABILIDAD_CONFIG["pesos"]
-        self.normalizacion = RENTABILIDAD_CONFIG["normalizacion"]
         
-        self.logger.info(f" Calculador iniciado para {self.modelo_config['nombre']}")
+        self.logger.info(f"Calculador simplificado iniciado para {self.modelo_config['nombre']}")
     
     def calculate_rentabilidad(self, df_motos: pd.DataFrame) -> pd.DataFrame:
         """
-        Calcular rentabilidad para todas las motos y ordenar por score
+        Calcular rentabilidad simplificada y ordenar por mejor rentabilidad
+        SOLO genera categoría simple, NO scores numéricos
         
         Args:
             df_motos: DataFrame con los datos de las motos
             
         Returns:
-            DataFrame ordenado por rentabilidad (mayor a menor)
+            DataFrame ordenado por rentabilidad con categoría simple
         """
         if df_motos.empty:
-            self.logger.warning(" DataFrame vacío, no se puede calcular rentabilidad")
+            self.logger.warning("DataFrame vacío, no se puede calcular rentabilidad")
             return df_motos
         
-        self.logger.info(f" Calculando rentabilidad para {len(df_motos)} motos")
+        self.logger.info(f"Calculando rentabilidad simplificada para {len(df_motos)} motos")
         
         try:
             # Crear copia para no modificar el original
             df = df_motos.copy()
             
-            # Extraer valores numéricos
-            df['Precio_Numerico'] = df['Precio'].apply(self._extract_price)
-            df['KM_Numerico'] = df['Kilometraje'].apply(self._extract_km)
-            df['Año_Numerico'] = df['Año'].apply(self._extract_year)
+            # Extraer valores numéricos para análisis interno
+            df['_precio_num'] = df['Precio'].apply(self._extract_price)
+            df['_km_num'] = df['Kilometraje'].apply(self._extract_km)
+            df['_año_num'] = df['Año'].apply(self._extract_year)
             
-            # Filtrar filas con datos válidos
+            # Filtrar filas con datos válidos para análisis
             df_valido = df[
-                (df['Precio_Numerico'] > 0) & 
-                (df['KM_Numerico'] >= 0) & 
-                (df['Año_Numerico'] > 0)
+                (df['_precio_num'] > 0) & 
+                (df['_km_num'] >= 0) & 
+                (df['_año_num'] > 0)
             ].copy()
             
             if df_valido.empty:
-                self.logger.warning(" No hay motos con datos válidos para calcular rentabilidad")
-                return df_motos
+                self.logger.warning("No hay motos con datos válidos para calcular rentabilidad")
+                # Asignar "Sin datos" a todas y retornar
+                df['Rentabilidad'] = "Sin datos"
+                return self._reorder_columns(df)
             
-            # Calcular scores individuales
-            df_valido['Score_Precio'] = self._calculate_price_score(df_valido['Precio_Numerico'])
-            df_valido['Score_KM'] = self._calculate_km_score(df_valido['KM_Numerico'])
-            df_valido['Score_Año'] = self._calculate_year_score(df_valido['Año_Numerico'])
+            # Calcular scores internos (NO se mostrarán)
+            df_valido['_score_precio'] = self._calculate_price_score(df_valido['_precio_num'])
+            df_valido['_score_km'] = self._calculate_km_score(df_valido['_km_num'])
+            df_valido['_score_año'] = self._calculate_year_score(df_valido['_año_num'])
             
-            # Calcular score total de rentabilidad
-            df_valido['Rentabilidad_Score'] = (
-                df_valido['Score_Precio'] * self.pesos['precio'] +
-                df_valido['Score_KM'] * self.pesos['kilometraje'] +
-                df_valido['Score_Año'] * self.pesos['año']
+            # Calcular score total interno para ordenamiento
+            df_valido['_score_total'] = (
+                df_valido['_score_precio'] * self.pesos['precio'] +
+                df_valido['_score_km'] * self.pesos['kilometraje'] +
+                df_valido['_score_año'] * self.pesos['año']
             )
             
-            # Añadir categoría de rentabilidad
-            df_valido['Categoria_Rentabilidad'] = df_valido['Rentabilidad_Score'].apply(self._get_rentabilidad_category)
+            # Generar SOLO categoría de rentabilidad (lo que se mostrará)
+            df_valido['Rentabilidad'] = df_valido['_score_total'].apply(self._get_categoria_simple)
             
-            # Ordenar por rentabilidad (mayor a menor)
-            df_ordenado = df_valido.sort_values('Rentabilidad_Score', ascending=False)
-            
-            # Añadir ranking
-            df_ordenado['Ranking_Rentabilidad'] = range(1, len(df_ordenado) + 1)
+            # Ordenar por score interno (mayor a menor rentabilidad)
+            df_ordenado = df_valido.sort_values('_score_total', ascending=False)
             
             # Añadir motos sin datos válidos al final
             df_sin_datos = df[~df.index.isin(df_valido.index)].copy()
             if not df_sin_datos.empty:
-                df_sin_datos['Rentabilidad_Score'] = 0
-                df_sin_datos['Categoria_Rentabilidad'] = "Sin datos"
-                df_sin_datos['Ranking_Rentabilidad'] = len(df_ordenado) + 1
+                df_sin_datos['Rentabilidad'] = "Sin datos"
                 df_ordenado = pd.concat([df_ordenado, df_sin_datos], ignore_index=True)
             
-            # Limpiar columnas auxiliares si no se quieren mostrar
-            columnas_a_eliminar = ['Precio_Numerico', 'KM_Numerico', 'Año_Numerico', 
-                                 'Score_Precio', 'Score_KM', 'Score_Año']
+            # ELIMINAR todas las columnas auxiliares (scores, etc.)
+            columnas_a_eliminar = [
+                '_precio_num', '_km_num', '_año_num', 
+                '_score_precio', '_score_km', '_score_año', '_score_total'
+            ]
             df_final = df_ordenado.drop(columns=columnas_a_eliminar, errors='ignore')
             
-            # Reordenar columnas para poner rentabilidad al principio
-            columnas = list(df_final.columns)
-            if 'Rentabilidad_Score' in columnas:
-                columnas.remove('Rentabilidad_Score')
-                columnas.insert(0, 'Rentabilidad_Score')
-            if 'Categoria_Rentabilidad' in columnas:
-                columnas.remove('Categoria_Rentabilidad')
-                columnas.insert(1, 'Categoria_Rentabilidad')
-            if 'Ranking_Rentabilidad' in columnas:
-                columnas.remove('Ranking_Rentabilidad')
-                columnas.insert(2, 'Ranking_Rentabilidad')
-            
-            df_final = df_final[columnas]
+            # Reordenar columnas según el orden especificado
+            df_final = self._reorder_columns(df_final)
             
             self._log_rentabilidad_stats(df_final)
             
             return df_final
             
         except Exception as e:
-            self.logger.error(f" Error calculando rentabilidad: {e}")
+            self.logger.error(f"Error calculando rentabilidad: {e}")
             return df_motos
+    
+    def _reorder_columns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Reordenar columnas según el orden especificado:
+        Título, Precio, Kilometraje, Año, Rentabilidad, Vendedor, Ubicación, Fecha_Publicacion, URL, Fecha_Extraccion
+        """
+        orden_deseado = [
+            'Título', 'Precio', 'Kilometraje', 'Año', 'Rentabilidad', 
+            'Vendedor', 'Ubicación', 'Fecha_Publicacion', 'URL', 'Fecha_Extraccion'
+        ]
+        
+        # Obtener columnas existentes en el orden deseado
+        columnas_ordenadas = []
+        for col in orden_deseado:
+            if col in df.columns:
+                columnas_ordenadas.append(col)
+        
+        # Añadir cualquier columna restante que no esté en el orden
+        for col in df.columns:
+            if col not in columnas_ordenadas:
+                columnas_ordenadas.append(col)
+        
+        return df[columnas_ordenadas]
     
     def _extract_price(self, price_text: str) -> float:
         """Extraer valor numérico del precio"""
@@ -224,86 +228,80 @@ class RentabilidadCalculator:
     def _calculate_price_score(self, precios: pd.Series) -> pd.Series:
         """Calcular score de precio (menor precio = mayor score)"""
         if precios.empty or precios.max() == precios.min():
-            return pd.Series([self.normalizacion['precio_max_score']] * len(precios))
+            return pd.Series([5.0] * len(precios))  # Score neutral
         
-        # Normalizar: menor precio = mayor score
+        # Normalizar: menor precio = mayor score (0-10)
         precio_min = precios.min()
         precio_max = precios.max()
         
-        # Score inverso: precio más bajo = score más alto
-        scores = self.normalizacion['precio_max_score'] * (precio_max - precios) / (precio_max - precio_min)
+        scores = 10.0 * (precio_max - precios) / (precio_max - precio_min)
         
-        return scores.clip(0, self.normalizacion['precio_max_score'])
+        return scores.clip(0, 10)
     
     def _calculate_km_score(self, kms: pd.Series) -> pd.Series:
         """Calcular score de kilometraje (menos km = mayor score)"""
         if kms.empty or kms.max() == kms.min():
-            return pd.Series([self.normalizacion['km_max_score']] * len(kms))
+            return pd.Series([5.0] * len(kms))  # Score neutral
         
-        # Normalizar: menos km = mayor score
+        # Normalizar: menos km = mayor score (0-10)
         km_min = kms.min()
         km_max = kms.max()
         
-        # Score inverso: menos km = score más alto
-        scores = self.normalizacion['km_max_score'] * (km_max - kms) / (km_max - km_min)
+        scores = 10.0 * (km_max - kms) / (km_max - km_min)
         
-        return scores.clip(0, self.normalizacion['km_max_score'])
+        return scores.clip(0, 10)
     
     def _calculate_year_score(self, años: pd.Series) -> pd.Series:
         """Calcular score de año (más reciente = mayor score)"""
         if años.empty or años.max() == años.min():
-            return pd.Series([self.normalizacion['año_max_score']] * len(años))
+            return pd.Series([5.0] * len(años))  # Score neutral
         
-        # Normalizar: año más reciente = mayor score
+        # Normalizar: año más reciente = mayor score (0-10)
         año_min = años.min()
         año_max = años.max()
         
-        # Score directo: año más reciente = score más alto
-        scores = self.normalizacion['año_max_score'] * (años - año_min) / (año_max - año_min)
+        scores = 10.0 * (años - año_min) / (año_max - año_min)
         
-        return scores.clip(0, self.normalizacion['año_max_score'])
+        return scores.clip(0, 10)
     
-    def _get_rentabilidad_category(self, score: float) -> str:
-        """Obtener categoría de rentabilidad según el score"""
-        max_score = sum(self.normalizacion.values())
-        porcentaje = (score / max_score) * 100
+    def _get_categoria_simple(self, score: float) -> str:
+        """
+        Convertir score interno a categoría simple de rentabilidad
+        SOLO se mostrarán estas categorías, NO el score numérico
+        """
+        # Score total máximo = 10 (promedio ponderado de los 3 scores)
+        porcentaje = (score / 10.0) * 100
         
-        if porcentaje >= 80:
-            return " Excelente"
-        elif porcentaje >= 65:
-            return " Muy Buena"
-        elif porcentaje >= 50:
-            return " Buena"
-        elif porcentaje >= 35:
-            return " Regular"
-        elif porcentaje >= 20:
-            return " Baja"
+        if porcentaje >= 85:
+            return "Excelente"
+        elif porcentaje >= 70:
+            return "Muy Buena"
+        elif porcentaje >= 55:
+            return "Buena"
+        elif porcentaje >= 40:
+            return "Regular"
+        elif porcentaje >= 25:
+            return "Baja"
         else:
-            return " Muy Baja"
+            return "Muy Baja"
     
     def _log_rentabilidad_stats(self, df_rentabilidad: pd.DataFrame):
-        """Registrar estadísticas de rentabilidad"""
+        """Registrar estadísticas de rentabilidad simplificadas"""
         if df_rentabilidad.empty:
             return
         
         total_motos = len(df_rentabilidad)
-        motos_con_score = len(df_rentabilidad[df_rentabilidad['Rentabilidad_Score'] > 0])
         
-        if motos_con_score > 0:
-            score_medio = df_rentabilidad[df_rentabilidad['Rentabilidad_Score'] > 0]['Rentabilidad_Score'].mean()
-            score_max = df_rentabilidad['Rentabilidad_Score'].max()
+        # Contar por categorías
+        if 'Rentabilidad' in df_rentabilidad.columns:
+            categorias = df_rentabilidad['Rentabilidad'].value_counts()
             
-            # Contar por categorías
-            categorias = df_rentabilidad['Categoria_Rentabilidad'].value_counts()
-            
-            self.logger.info(f" Estadísticas de rentabilidad:")
+            self.logger.info(f"Estadísticas de rentabilidad:")
             self.logger.info(f"   • Total motos: {total_motos}")
-            self.logger.info(f"   • Con score válido: {motos_con_score}")
-            self.logger.info(f"   • Score medio: {score_medio:.2f}")
-            self.logger.info(f"   • Score máximo: {score_max:.2f}")
             
-            for categoria, count in categorias.head(3).items():
-                self.logger.info(f"   • {categoria}: {count} motos")
+            for categoria, count in categorias.items():
+                porcentaje = (count / total_motos) * 100
+                self.logger.info(f"   • {categoria}: {count} motos ({porcentaje:.1f}%)")
 
 # ============================================================================
 # FUNCIONES DE UTILIDAD
@@ -311,21 +309,21 @@ class RentabilidadCalculator:
 
 def calculate_model_rentabilidad(modelo_key: str, df_motos: pd.DataFrame) -> pd.DataFrame:
     """
-    Función helper para calcular rentabilidad de un modelo
+    Función helper para calcular rentabilidad simplificada de un modelo
     
     Args:
         modelo_key: Clave del modelo
         df_motos: DataFrame con datos de motos
         
     Returns:
-        DataFrame ordenado por rentabilidad
+        DataFrame ordenado por rentabilidad con categorías simples
     """
     calculator = RentabilidadCalculator(modelo_key)
     return calculator.calculate_rentabilidad(df_motos)
 
-def test_rentabilidad_calculator():
-    """Función de prueba para el calculador de rentabilidad"""
-    print(" Probando calculador de rentabilidad...")
+def test_rentabilidad_calculator_simplificado():
+    """Función de prueba para el calculador de rentabilidad simplificado"""
+    print("Probando calculador de rentabilidad simplificado...")
     
     # Crear datos de prueba
     test_data = {
@@ -343,20 +341,20 @@ def test_rentabilidad_calculator():
         calculator = RentabilidadCalculator('cb125r')
         df_resultado = calculator.calculate_rentabilidad(df_test)
         
-        print(" Calculador funcionando correctamente")
-        print(f" {len(df_resultado)} motos procesadas")
+        print("Calculador simplificado funcionando correctamente")
+        print(f"{len(df_resultado)} motos procesadas")
         
         if not df_resultado.empty:
-            print("\n Top 3 más rentables:")
+            print("\nTop 3 más rentables:")
             for i, (_, moto) in enumerate(df_resultado.head(3).iterrows()):
-                print(f"   {i+1}. {moto['Título']} - Score: {moto.get('Rentabilidad_Score', 0):.2f}")
+                print(f"   {i+1}. {moto['Título']} - Rentabilidad: {moto.get('Rentabilidad', 'N/A')}")
         
         return True
         
     except Exception as e:
-        print(f" Error en calculador: {e}")
+        print(f"Error en calculador: {e}")
         return False
 
 if __name__ == "__main__":
-    # Prueba del calculador
-    test_rentabilidad_calculator()
+    # Prueba del calculador simplificado
+    test_rentabilidad_calculator_simplificado()
