@@ -1,20 +1,12 @@
 """
 ================================================================================
-                    SCRAPER HONDA PCX125 - WALLAPOP MOTOS SCRAPER                    
+                            SCRAPER HONDA PCX125                  
 ================================================================================
 
-Scraper específico para Honda PCX125
-Implementa detección ultra precisa del modelo de scooter urbano
-
-Características:
-- Detección específica de Honda PCX125 y variantes
-- Filtrado optimizado para scooters urbanos
-- URLs optimizadas para este modelo específico
-- Validación estricta de marca y modelo
-
 Autor: Carlos Peraza
-Versión: 1.0
-Fecha: Septiembre 2025
+Versión: 2.0
+Fecha: Agosto 2025
+
 ================================================================================
 """
 
@@ -47,54 +39,123 @@ class ScraperPCX125(BaseScraper):
             r'\bxmax\b'            # XMAX (Yamaha)
         ]
         
-        self.logger.info(f" Scraper PCX125 inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
+        self.logger.info(f"Scraper PCX125 inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
     
     def get_search_urls(self) -> List[str]:
-        """Generar URLs de búsqueda optimizadas para Honda PCX125"""
+        """Generar URLs de búsqueda optimizadas para Honda PCX125 - VERSIÓN EXTENDIDA"""
         min_price = self.modelo_config['precio_min']
         max_price = self.modelo_config['precio_max']
         
         urls = []
         
-        # URLs principales más efectivas para PCX125
+        # 1. BÚSQUEDAS PRINCIPALES BÁSICAS
         base_queries = [
-            "honda%20pcx125",
-            "honda%20pcx%20125", 
-            "pcx125",
-            "pcx%20125",
-            "honda%20pcx",
-            "scooter%20honda%20pcx125",
-            "honda%20pcx125%202020",
-            "honda%20pcx125%202021",
-            "honda%20pcx125%202022",
-            "honda%20pcx125%202023",
-            "honda%20pcx125%202024"
+            "honda%20pcx125", "honda%20pcx%20125", "pcx125", "pcx%20125",
+            "honda%20pcx", "scooter%20honda%20pcx125", "scooter%20honda%20pcx",
+            "honda%20pcx%20scooter", "pcx%20honda", "scooter%20pcx125"
         ]
         
-        # Generar URLs con diferentes ordenamientos
-        for query in base_queries:
-            # URL básica con filtro de precio
+        # 2. BÚSQUEDAS POR AÑOS ESPECÍFICOS (2016-2024)
+        year_queries = []
+        for year in range(2016, 2025):
+            year_queries.extend([
+                f"honda%20pcx125%20{year}",
+                f"pcx125%20{year}",
+                f"honda%20pcx%20{year}",
+                f"scooter%20honda%20{year}%20pcx"
+            ])
+        
+        # 3. BÚSQUEDAS POR RANGOS DE PRECIOS
+        price_ranges = [
+            (min_price, min_price + 500),
+            (min_price + 400, min_price + 1000),
+            (min_price + 800, min_price + 1500),
+            (min_price + 1200, max_price)
+        ]
+        
+        price_queries = []
+        for min_p, max_p in price_ranges:
+            price_queries.extend([
+                f"pcx125&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"honda%20pcx&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"scooter%20honda&min_sale_price={min_p}&max_sale_price={max_p}"
+            ])
+        
+        # 4. BÚSQUEDAS POR CIUDADES Y REGIONES
+        regions = [
+            ("madrid", "40.4168", "-3.7038"),
+            ("barcelona", "41.3851", "2.1734"),
+            ("valencia", "39.4699", "-0.3763"),
+            ("sevilla", "37.3891", "-5.9845"),
+            ("bilbao", "43.2630", "-2.9350"),
+            ("zaragoza", "41.6488", "-0.8891"),
+            ("murcia", "37.9922", "-1.1307"),
+            ("palma", "39.5696", "2.6502"),
+            ("las%20palmas", "28.1248", "-15.4300"),
+            ("alicante", "38.3452", "-0.4810")
+        ]
+        
+        regional_queries = []
+        for city, lat, lng in regions:
+            regional_queries.extend([
+                f"pcx125&latitude={lat}&longitude={lng}&distance=50000",
+                f"honda%20pcx&latitude={lat}&longitude={lng}&distance=50000",
+                f"scooter%20honda&latitude={lat}&longitude={lng}&distance=75000"
+            ])
+        
+        # 5. BÚSQUEDAS CON TÉRMINOS RELACIONADOS
+        related_queries = [
+            "scooter%20125%20honda", "honda%20125%20scooter", "scooter%20urbano%20honda",
+            "honda%20scooter%20125", "moto%20automatica%20honda", "scooter%20automatico",
+            "honda%20pcx%20original", "pcx%20honda%20oficial", "scooter%20honda%20nuevo",
+            "scooter%20honda%20segunda%20mano", "pcx%20segunda%20mano", "honda%20pcx%20usado"
+        ]
+        
+        # 6. BÚSQUEDAS CON ERRORES ORTOGRÁFICOS COMUNES
+        misspelling_queries = [
+            "honda%20pcx12", "honda%20pc%20125", "honda%20pxc125", "pcx%20honda%20125",
+            "honda%20pcx%20modelo%20125", "scuter%20honda%20pcx", "escoter%20honda%20125"
+        ]
+        
+        # 7. BÚSQUEDAS CON FILTROS ESPECÍFICOS
+        specific_queries = [
+            "pcx125%20particular", "pcx125%20concesionario", "honda%20pcx%20taller",
+            "pcx125%20garantia", "honda%20pcx%20financiacion", "scooter%20honda%20ocasion"
+        ]
+        
+        # 8. COMBINAR TODAS LAS QUERIES
+        all_base_queries = (base_queries + year_queries + related_queries + 
+                           misspelling_queries + specific_queries)
+        
+        # GENERAR URLS PRINCIPALES
+        for query in all_base_queries:
+            # URL básica
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}")
             
             # URL ordenada por más recientes
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&order_by=newest")
+            
+            # URL ordenada por precio
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&order_by=price_low_to_high")
         
-        # URLs específicas por regiones principales (scooters urbanos se concentran en ciudades)
-        main_regions = ["madrid", "barcelona", "valencia", "sevilla"]
-        for region in main_regions[:3]:  # Solo 3 regiones principales
-            query = "honda%20pcx125"
-            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&filters_source=search_box&latitude=40.4168&longitude=-3.7038&distance=100000")
+        # AÑADIR BÚSQUEDAS POR RANGOS DE PRECIOS
+        for query in price_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        # URLs específicas para scooters
-        scooter_queries = [
-            "scooter%20honda%20125",
-            "honda%20scooter%20125"
-        ]
+        # AÑADIR BÚSQUEDAS REGIONALES
+        for query in regional_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        for query in scooter_queries:
-            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}")
+        # 9. BÚSQUEDAS ESPECÍFICAS SIN FILTRO DE PRECIO (para encontrar ofertas)
+        no_price_queries = ["pcx125", "honda%20pcx", "scooter%20honda%20125"]
+        for query in no_price_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=price_low_to_high")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        # Eliminar duplicados manteniendo orden
+        # 10. ELIMINAR DUPLICADOS MANTENIENDO ORDEN
         unique_urls = []
         seen = set()
         for url in urls:
@@ -102,7 +163,7 @@ class ScraperPCX125(BaseScraper):
                 unique_urls.append(url)
                 seen.add(url)
         
-        self.logger.info(f" {len(unique_urls)} URLs generadas para PCX125")
+        self.logger.info(f"URLs generadas para PCX125: {len(unique_urls)}")
         return unique_urls
     
     def validate_moto_data(self, moto_data: Dict) -> bool:
@@ -123,35 +184,35 @@ class ScraperPCX125(BaseScraper):
             # PASO 1: Verificar que sea Honda
             honda_found = self._is_honda_brand(combined_text)
             if not honda_found:
-                self.logger.debug(" No es Honda")
+                self.logger.debug("No es Honda")
                 return False
             
             # PASO 2: Verificar modelo PCX125 específico
             pcx125_found = self._is_pcx125_model(combined_text)
             if not pcx125_found:
-                self.logger.debug(" No es PCX125")
+                self.logger.debug("No es PCX125")
                 return False
             
             # PASO 3: Excluir otros modelos PCX o scooters
             if self._is_excluded_model(combined_text):
-                self.logger.debug(" Es otro modelo PCX o scooter excluido")
+                self.logger.debug("Es otro modelo PCX o scooter excluido")
                 return False
             
             # PASO 4: Validar precio si está disponible
             if not self._is_valid_price_range(moto_data.get('Precio', '')):
-                self.logger.debug(" Precio fuera de rango")
+                self.logger.debug("Precio fuera de rango")
                 return False
             
             # PASO 5: Validar año si está disponible
             if not self._is_valid_year_range(moto_data.get('Año', '')):
-                self.logger.debug(" Año fuera de rango")
+                self.logger.debug("Año fuera de rango")
                 return False
             
-            self.logger.debug(f" PCX125 válida: {titulo[:50]}")
+            self.logger.debug(f"PCX125 válida: {titulo[:50]}")
             return True
             
         except Exception as e:
-            self.logger.warning(f" Error validando moto: {e}")
+            self.logger.warning(f"Error validando moto: {e}")
             return False
     
     def _is_honda_brand(self, text: str) -> bool:
@@ -215,57 +276,6 @@ class ScraperPCX125(BaseScraper):
             pass
         
         return True  # Aceptar si no se puede parsear
-    
-    def extract_kilometraje(self) -> str:
-        """Extraer kilometraje con patrones específicos para scooters"""
-        try:
-            # Buscar en toda la página
-            page_text = self.driver.page_source.lower()
-            
-            # Patrones específicos para scooters (suelen tener menos km)
-            km_patterns = [
-                r'(\d+(?:\.\d{3})*)\s*km',
-                r'(\d+(?:,\d{3})*)\s*km',
-                r'(\d+(?:\.\d{3})*)\s*kilómetros',
-                r'kilometraje[:\s]*(\d+(?:\.\d{3})*)',
-                r'km[:\s]*(\d+(?:\.\d{3})*)',
-                r'(\d+)\s*mil\s*km'
-            ]
-            
-            for pattern in km_patterns:
-                match = re.search(pattern, page_text)
-                if match:
-                    km_value = match.group(1)
-                    # Convertir mil km a km
-                    if 'mil' in match.group(0):
-                        km_value = str(int(float(km_value.replace(',', '.')) * 1000))
-                    return km_value
-            
-            return "No especificado"
-            
-        except Exception as e:
-            self.logger.debug(f"Error extrayendo km: {e}")
-            return "No especificado"
-    
-    def extract_vendedor(self) -> str:
-        """Extraer vendedor con detección de comerciales específicos para scooters"""
-        selectors = [
-            "[data-testid='seller-name']",
-            ".seller-name",
-            ".user-info .name",
-            ".seller-info .name",
-            ".profile-name",
-            ".user-name"
-        ]
-        
-        vendedor = self._extract_text_by_selectors(selectors, "Particular")
-        
-        # Detectar si es comercial (común en scooters)
-        commercial_keywords = ['concesionario', 'motor', 'moto', 'honda', 'taller', 'scooter', 'yamaha']
-        if any(word in vendedor.lower() for word in commercial_keywords):
-            return f" {vendedor}"
-        
-        return vendedor
 
 # ============================================================================
 # FUNCIÓN PRINCIPAL
@@ -278,14 +288,14 @@ def run_pcx125_scraper():
         df_results = scraper.scrape_model()
         
         if not df_results.empty:
-            print(f" Scraping PCX125 completado: {len(df_results)} motos encontradas")
+            print(f"Scraping PCX125 completado: {len(df_results)} motos encontradas")
             return df_results
         else:
-            print(" No se encontraron motos PCX125")
+            print("No se encontraron motos PCX125")
             return df_results
             
     except Exception as e:
-        print(f" Error en scraper PCX125: {e}")
+        print(f"Error en scraper PCX125: {e}")
         return None
 
 if __name__ == "__main__":
@@ -296,6 +306,6 @@ if __name__ == "__main__":
     
     results = run_pcx125_scraper()
     if results is not None and not results.empty:
-        print(f"\n Primeras 3 motos encontradas:")
+        print(f"\nPrimeras 3 motos encontradas:")
         for i, (_, moto) in enumerate(results.head(3).iterrows()):
             print(f"   {i+1}. {moto['Título']} - {moto['Precio']} - {moto['Año']}")
