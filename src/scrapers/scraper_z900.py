@@ -1,20 +1,12 @@
 """
 ================================================================================
-                    SCRAPER KAWASAKI Z900 - WALLAPOP MOTOS SCRAPER                    
+                          SCRAPER KAWASAKI Z900                  
 ================================================================================
 
-Scraper específico para Kawasaki Z900
-Implementa detección ultra precisa del modelo naked de alta cilindrada
-
-Características:
-- Detección específica de Kawasaki Z900 y variantes (Z900, Z900RS, Z900E)
-- Filtrado optimizado para motos naked de alta cilindrada
-- URLs optimizadas para este modelo específico
-- Validación estricta de marca y modelo
-
 Autor: Carlos Peraza
-Versión: 1.0
-Fecha: Septiembre 2025
+Versión: 2.0
+Fecha: Agosto 2025
+
 ================================================================================
 """
 
@@ -51,61 +43,150 @@ class ScraperZ900(BaseScraper):
             r'\bninja\b'          # Ninja series
         ]
         
-        self.logger.info(f" Scraper Z900 inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
+        self.logger.info(f"Scraper Z900 inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
     
     def get_search_urls(self) -> List[str]:
-        """Generar URLs de búsqueda optimizadas para Kawasaki Z900"""
+        """Generar URLs de búsqueda optimizadas para Kawasaki Z900 - VERSIÓN EXTENDIDA"""
         min_price = self.modelo_config['precio_min']
         max_price = self.modelo_config['precio_max']
         
         urls = []
         
-        # URLs principales más efectivas para Z900
+        # 1. BÚSQUEDAS PRINCIPALES BÁSICAS
         base_queries = [
-            "kawasaki%20z900",
-            "kawasaki%20z%20900", 
-            "z900",
-            "z%20900",
-            "kawasaki%20z900%20naked",
-            "naked%20kawasaki%20z900",
-            "kawasaki%20z900rs",
-            "z900%20rs",
-            "kawasaki%20z900%202017",
-            "kawasaki%20z900%202018",
-            "kawasaki%20z900%202019",
-            "kawasaki%20z900%202020",
-            "kawasaki%20z900%202021",
-            "kawasaki%20z900%202022",
-            "kawasaki%20z900%202023",
-            "kawasaki%20z900%202024"
+            "kawasaki%20z900", "kawasaki%20z%20900", "z900", "z%20900",
+            "kawasaki%20z900%20naked", "naked%20kawasaki%20z900", "kawasaki%20z900rs",
+            "z900%20rs", "kawasaki%20z%20900%20rs", "z900rs", "naked%20kawasaki%20900"
         ]
         
-        # Generar URLs con diferentes ordenamientos
-        for query in base_queries:
-            # URL básica con filtro de precio
+        # 2. BÚSQUEDAS POR AÑOS ESPECÍFICOS (2017-2024)
+        year_queries = []
+        for year in range(2017, 2025):
+            year_queries.extend([
+                f"kawasaki%20z900%20{year}",
+                f"z900%20{year}",
+                f"kawasaki%20z%20900%20{year}",
+                f"naked%20kawasaki%20{year}%20z900",
+                f"z900rs%20{year}",
+                f"kawasaki%20{year}%20z900"
+            ])
+        
+        # 3. BÚSQUEDAS POR RANGOS DE PRECIOS
+        price_ranges = [
+            (min_price, min_price + 1000),
+            (min_price + 800, min_price + 2000),
+            (min_price + 1500, min_price + 3000),
+            (min_price + 2500, max_price)
+        ]
+        
+        price_queries = []
+        for min_p, max_p in price_ranges:
+            price_queries.extend([
+                f"z900&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"kawasaki%20z900&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"naked%20kawasaki&min_sale_price={min_p}&max_sale_price={max_p}",
+                f"kawasaki%20naked&min_sale_price={min_p}&max_sale_price={max_p}"
+            ])
+        
+        # 4. BÚSQUEDAS POR CIUDADES Y REGIONES
+        regions = [
+            ("madrid", "40.4168", "-3.7038"),
+            ("barcelona", "41.3851", "2.1734"),
+            ("valencia", "39.4699", "-0.3763"),
+            ("sevilla", "37.3891", "-5.9845"),
+            ("bilbao", "43.2630", "-2.9350"),
+            ("zaragoza", "41.6488", "-0.8891"),
+            ("murcia", "37.9922", "-1.1307"),
+            ("palma", "39.5696", "2.6502"),
+            ("las%20palmas", "28.1248", "-15.4300"),
+            ("alicante", "38.3452", "-0.4810"),
+            ("cordoba", "37.8882", "-4.7794"),
+            ("valladolid", "41.6523", "-4.7245"),
+            ("santander", "43.4623", "-3.8099"),
+            ("gijon", "43.5322", "-5.6611")
+        ]
+        
+        regional_queries = []
+        for city, lat, lng in regions:
+            regional_queries.extend([
+                f"z900&latitude={lat}&longitude={lng}&distance=50000",
+                f"kawasaki%20z900&latitude={lat}&longitude={lng}&distance=50000",
+                f"naked%20kawasaki&latitude={lat}&longitude={lng}&distance=75000",
+                f"kawasaki%20naked&latitude={lat}&longitude={lng}&distance=75000"
+            ])
+        
+        # 5. BÚSQUEDAS CON TÉRMINOS RELACIONADOS
+        related_queries = [
+            "naked%20kawasaki%20900", "kawasaki%20900%20naked", "moto%20naked%20kawasaki",
+            "kawasaki%20z%20serie", "kawasaki%20roadster", "naked%20kawasaki%20alta",
+            "kawasaki%20z900%20original", "z900%20kawasaki%20oficial", "naked%20kawasaki%20nuevo",
+            "naked%20kawasaki%20segunda%20mano", "z900%20segunda%20mano", "kawasaki%20z900%20usado",
+            "moto%20kawasaki%20naked", "roadster%20kawasaki", "kawasaki%20sport%20naked",
+            "kawasaki%20z900%20performance", "z900%20sugomi"
+        ]
+        
+        # 6. BÚSQUEDAS CON ERRORES ORTOGRÁFICOS COMUNES
+        misspelling_queries = [
+            "kawasaki%20z%209%200%200", "kawasaki%20z%20900", "z%20900%20kawasaki",
+            "kawasaky%20z900", "kawasaki%20z900%20modello", "nakeed%20kawasaki%20z900",
+            "z%20900%20kawasaky", "kawasaki%20z%20novecientos", "z%20novecientos%20kawasaki"
+        ]
+        
+        # 7. BÚSQUEDAS CON FILTROS ESPECÍFICOS
+        specific_queries = [
+            "z900%20particular", "z900%20concesionario", "kawasaki%20z900%20taller",
+            "z900%20garantia", "kawasaki%20z900%20financiacion", "naked%20kawasaki%20ocasion",
+            "z900%20abs", "kawasaki%20z900%20abs", "naked%20kawasaki%20abs",
+            "z900%20quickshifter", "z900%20se"
+        ]
+        
+        # 8. BÚSQUEDAS POR CARACTERÍSTICAS TÉCNICAS
+        technical_queries = [
+            "kawasaki%20900%20cuatro%20cilindros", "naked%20900cc%20kawasaki", "kawasaki%20z900%20inline4",
+            "kawasaki%20z900%20sugomi", "naked%20kawasaki%20948cc", "kawasaki%20cuatro%20cilindros%20naked",
+            "z900%20performance", "kawasaki%20ninja%20z900", "z900%20streetfighter"
+        ]
+        
+        # 9. BÚSQUEDAS DE VARIANTES ESPECÍFICAS
+        variant_queries = [
+            "z900rs", "z900%20rs", "kawasaki%20z900rs", "kawasaki%20z900%20rs",
+            "z900%20retro", "kawasaki%20z900%20retro", "z900%20classic", "z900%20cafe",
+            "z900se", "z900%20se", "kawasaki%20z900se"
+        ]
+        
+        # 10. COMBINAR TODAS LAS QUERIES
+        all_base_queries = (base_queries + year_queries + related_queries + 
+                           misspelling_queries + specific_queries + technical_queries + variant_queries)
+        
+        # GENERAR URLS PRINCIPALES
+        for query in all_base_queries:
+            # URL básica
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}")
             
             # URL ordenada por más recientes
             urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&order_by=newest")
+            
+            # URL ordenada por precio
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&order_by=price_low_to_high")
         
-        # URLs específicas por regiones principales
-        main_regions = ["madrid", "barcelona", "valencia"]
-        for region in main_regions:
-            query = "kawasaki%20z900"
-            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&filters_source=search_box&latitude=40.4168&longitude=-3.7038&distance=100000")
+        # AÑADIR BÚSQUEDAS POR RANGOS DE PRECIOS
+        for query in price_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        # URLs específicas para motos naked premium
-        naked_queries = [
-            "naked%20kawasaki%20900",
-            "kawasaki%20naked%20900",
-            "moto%20naked%20premium",
-            "kawasaki%20z%20serie"
-        ]
+        # AÑADIR BÚSQUEDAS REGIONALES
+        for query in regional_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        for query in naked_queries:
-            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}")
+        # 11. BÚSQUEDAS ESPECÍFICAS SIN FILTRO DE PRECIO (para encontrar ofertas)
+        no_price_queries = ["z900", "kawasaki%20z900", "naked%20kawasaki%20z"]
+        for query in no_price_queries:
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=price_low_to_high")
+            urls.append(f"https://es.wallapop.com/app/search?keywords={query}&order_by=newest")
         
-        # Eliminar duplicados manteniendo orden
+        # 12. ELIMINAR DUPLICADOS MANTENIENDO ORDEN
         unique_urls = []
         seen = set()
         for url in urls:
@@ -113,7 +194,7 @@ class ScraperZ900(BaseScraper):
                 unique_urls.append(url)
                 seen.add(url)
         
-        self.logger.info(f"🔍 {len(unique_urls)} URLs generadas para Z900")
+        self.logger.info(f"URLs generadas para Z900: {len(unique_urls)}")
         return unique_urls
     
     def validate_moto_data(self, moto_data: Dict) -> bool:
@@ -134,35 +215,35 @@ class ScraperZ900(BaseScraper):
             # PASO 1: Verificar que sea Kawasaki
             kawasaki_found = self._is_kawasaki_brand(combined_text)
             if not kawasaki_found:
-                self.logger.debug(" No es Kawasaki")
+                self.logger.debug("No es Kawasaki")
                 return False
             
             # PASO 2: Verificar modelo Z900 específico
             z900_found = self._is_z900_model(combined_text)
             if not z900_found:
-                self.logger.debug(" No es Z900")
+                self.logger.debug("No es Z900")
                 return False
             
             # PASO 3: Excluir otros modelos Z de Kawasaki
             if self._is_excluded_model(combined_text):
-                self.logger.debug(" Es otro modelo Z de Kawasaki excluido")
+                self.logger.debug("Es otro modelo Z de Kawasaki excluido")
                 return False
             
             # PASO 4: Validar precio si está disponible
             if not self._is_valid_price_range(moto_data.get('Precio', '')):
-                self.logger.debug(" Precio fuera de rango")
+                self.logger.debug("Precio fuera de rango")
                 return False
             
             # PASO 5: Validar año si está disponible
             if not self._is_valid_year_range(moto_data.get('Año', '')):
-                self.logger.debug(" Año fuera de rango")
+                self.logger.debug("Año fuera de rango")
                 return False
             
-            self.logger.debug(f" Z900 válida: {titulo[:50]}")
+            self.logger.debug(f"Z900 válida: {titulo[:50]}")
             return True
             
         except Exception as e:
-            self.logger.warning(f" Error validando moto: {e}")
+            self.logger.warning(f"Error validando moto: {e}")
             return False
     
     def _is_kawasaki_brand(self, text: str) -> bool:
@@ -238,57 +319,6 @@ class ScraperZ900(BaseScraper):
             pass
         
         return True  # Aceptar si no se puede parsear
-    
-    def extract_kilometraje(self) -> str:
-        """Extraer kilometraje con patrones específicos para motos naked premium"""
-        try:
-            # Buscar en toda la página
-            page_text = self.driver.page_source.lower()
-            
-            # Patrones específicos para motos premium (menos km generalmente)
-            km_patterns = [
-                r'(\d+(?:\.\d{3})*)\s*km',
-                r'(\d+(?:,\d{3})*)\s*km',
-                r'(\d+(?:\.\d{3})*)\s*kilómetros',
-                r'kilometraje[:\s]*(\d+(?:\.\d{3})*)',
-                r'km[:\s]*(\d+(?:\.\d{3})*)',
-                r'(\d+)\s*mil\s*km'
-            ]
-            
-            for pattern in km_patterns:
-                match = re.search(pattern, page_text)
-                if match:
-                    km_value = match.group(1)
-                    # Convertir mil km a km
-                    if 'mil' in match.group(0):
-                        km_value = str(int(float(km_value.replace(',', '.')) * 1000))
-                    return km_value
-            
-            return "No especificado"
-            
-        except Exception as e:
-            self.logger.debug(f"Error extrayendo km: {e}")
-            return "No especificado"
-    
-    def extract_vendedor(self) -> str:
-        """Extraer vendedor con detección de comerciales específicos"""
-        selectors = [
-            "[data-testid='seller-name']",
-            ".seller-name",
-            ".user-info .name",
-            ".seller-info .name",
-            ".profile-name",
-            ".user-name"
-        ]
-        
-        vendedor = self._extract_text_by_selectors(selectors, "Particular")
-        
-        # Detectar si es comercial (muy común en motos de alta cilindrada)
-        commercial_keywords = ['concesionario', 'motor', 'moto', 'kawasaki', 'taller', 'naked', 'racing', 'premium']
-        if any(word in vendedor.lower() for word in commercial_keywords):
-            return f"🏢 {vendedor}"
-        
-        return vendedor
 
 # ============================================================================
 # FUNCIÓN PRINCIPAL
@@ -301,14 +331,14 @@ def run_z900_scraper():
         df_results = scraper.scrape_model()
         
         if not df_results.empty:
-            print(f" Scraping Z900 completado: {len(df_results)} motos encontradas")
+            print(f"Scraping Z900 completado: {len(df_results)} motos encontradas")
             return df_results
         else:
-            print(" No se encontraron motos Z900")
+            print("No se encontraron motos Z900")
             return df_results
             
     except Exception as e:
-        print(f" Error en scraper Z900: {e}")
+        print(f"Error en scraper Z900: {e}")
         return None
 
 if __name__ == "__main__":
@@ -319,6 +349,6 @@ if __name__ == "__main__":
     
     results = run_z900_scraper()
     if results is not None and not results.empty:
-        print(f"\n Primeras 3 motos encontradas:")
+        print(f"\nPrimeras 3 motos encontradas:")
         for i, (_, moto) in enumerate(results.head(3).iterrows()):
             print(f"   {i+1}. {moto['Título']} - {moto['Precio']} - {moto['Año']}")
