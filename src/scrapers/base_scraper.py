@@ -1,14 +1,12 @@
 """
 ================================================================================
-                    BASE SCRAPER COMPLETO CORREGIDO - WALLAPOP MOTOS SCRAPER                    
+                                BASE SCRAPER                     
 ================================================================================
 
-Clase base con extracción de precios corregida usando la lógica probada del scraper MOTICK
-Código completo, limpio y sin errores de sintaxis
-
 Autor: Carlos Peraza
-Versión: 1.2 - Completo y corregido
-Fecha: Septiembre 2025
+Versión: 2.0 
+Fecha: Agosto 2025
+
 ================================================================================
 """
 
@@ -92,10 +90,10 @@ class BaseScraper(ABC):
         try:
             driver = webdriver.Chrome(options=options)
             
-            # Configurar timeouts
-            driver.implicitly_wait(0.5)
-            driver.set_page_load_timeout(10)
-            driver.set_script_timeout(8)
+            # TIMEOUTS EXTENDIDOS PARA MAS TIEMPO DE SCRAPING
+            driver.implicitly_wait(2.0)
+            driver.set_page_load_timeout(30)
+            driver.set_script_timeout(20)
             
             if not is_github_actions():
                 driver.maximize_window()
@@ -110,7 +108,7 @@ class BaseScraper(ABC):
     def scrape_model(self) -> pd.DataFrame:
         """Método principal para hacer scraping de un modelo"""
         try:
-            self.logger.info(f"Iniciando scraping de {self.modelo_config['nombre']}")
+            self.logger.info(f"Iniciando scraping EXTENDIDO de {self.modelo_config['nombre']}")
             
             # Configurar driver
             self.driver = self.setup_driver()
@@ -119,22 +117,22 @@ class BaseScraper(ABC):
             search_urls = self.get_search_urls()
             self.logger.info(f"{len(search_urls)} URLs de búsqueda generadas")
             
-            # Procesar cada URL con límite de tiempo
+            # TIMEOUTS EXTENDIDOS PARA EJECUCION COMPLETA
             start_time = time.time()
-            max_total_time = 1800 if is_github_actions() else 3600
+            max_total_time = 14400 if is_github_actions() else 18000  # 4-5 horas
             
             for i, url in enumerate(search_urls, 1):
                 # Verificar tiempo total
                 elapsed_time = time.time() - start_time
                 if elapsed_time > max_total_time:
-                    self.logger.warning(f"Tiempo límite alcanzado ({max_total_time/60:.1f} min)")
+                    self.logger.warning(f"Tiempo límite alcanzado ({max_total_time/3600:.1f} horas)")
                     break
                 
                 self.logger.info(f"Procesando URL {i}/{len(search_urls)}: {url[:80]}...")
                 
                 try:
-                    self.process_search_url_with_timeout(url)
-                    time.sleep(1)
+                    self.process_search_url_extended(url)
+                    time.sleep(2)
                 except Exception as e:
                     self.logger.warning(f"Error procesando URL {i}: {e}")
                     continue
@@ -144,8 +142,8 @@ class BaseScraper(ABC):
                 df = pd.DataFrame(self.results)
                 self.logger.info(f"Scraping completado: {len(df)} motos encontradas")
                 
-                # DEBUG: Mostrar precios extraídos para diagnóstico
-                self._debug_extracted_prices(df)
+                # DEBUG: Mostrar datos extraídos
+                self._debug_extracted_data(df)
                 
                 return df
             else:
@@ -163,43 +161,29 @@ class BaseScraper(ABC):
                 except:
                     pass
     
-    def _debug_extracted_prices(self, df: pd.DataFrame):
-        """Función debug para mostrar precios extraídos"""
-        print("\n=== DEBUG: PRECIOS EXTRAÍDOS ===")
+    def _debug_extracted_data(self, df: pd.DataFrame):
+        """Debug para mostrar datos extraídos"""
+        print("\n=== DEBUG: DATOS EXTRAIDOS ===")
         for i, row in df.head(5).iterrows():
-            print(f"{i+1}. Título: {row['Título'][:40]}...")
-            print(f"   Precio raw: '{row['Precio']}'")
-            print(f"   Precio limpio: '{self._clean_price_for_debug(row['Precio'])}'")
+            print(f"{i+1}. Título: '{row.get('Título', 'N/A')}'")
+            print(f"   Precio: '{row.get('Precio', 'N/A')}'")
+            print(f"   Kilometraje: '{row.get('Kilometraje', 'N/A')}'")
+            print(f"   Año: '{row.get('Año', 'N/A')}'")
+            print(f"   Vendedor: '{row.get('Vendedor', 'N/A')}'")
         print("================================\n")
     
-    def _clean_price_for_debug(self, price_text: str) -> str:
-        """Función debug para mostrar limpieza de precios"""
-        if not price_text or price_text == "No especificado":
-            return "0"
-        
-        # Mostrar paso a paso la limpieza
-        step1 = price_text.replace('&nbsp;', ' ').replace('\xa0', ' ')
-        step2 = re.sub(r'[^\d.,€]', '', step1)
-        step3 = re.findall(r'\d+', step2.replace('.', '').replace(',', ''))
-        
-        print(f"     Debug: '{price_text}' -> '{step1}' -> '{step2}' -> {step3}")
-        
-        if step3:
-            return step3[0]
-        return "0"
-    
-    def process_search_url_with_timeout(self, url: str):
-        """Procesar una URL de búsqueda con timeout"""
-        max_url_time = 600 if is_github_actions() else 900
+    def process_search_url_extended(self, url: str):
+        """Procesar una URL de búsqueda con tiempo extendido"""
+        max_url_time = 2400 if is_github_actions() else 3600  # 40min-1h por URL
         start_url_time = time.time()
         
         try:
             # Cargar página con timeout
             self.driver.get(url)
-            time.sleep(2)
+            time.sleep(3)
             
             # Obtener enlaces de anuncios
-            enlaces = self.get_anuncio_links()
+            enlaces = self.get_anuncio_links_enhanced()
             
             if not enlaces:
                 self.logger.warning(f"No se encontraron enlaces en esta URL")
@@ -207,8 +191,8 @@ class BaseScraper(ABC):
             
             self.logger.info(f"{len(enlaces)} enlaces encontrados")
             
-            # Procesar cada anuncio con límite
-            max_anuncios = 10 if is_github_actions() else len(enlaces)
+            # PROCESAR MUCHOS MAS ANUNCIOS
+            max_anuncios = 50 if is_github_actions() else len(enlaces)  # SIN LIMITE AGRESIVO
             anuncios_procesados = 0
             
             for i, enlace in enumerate(enlaces[:max_anuncios], 1):
@@ -223,7 +207,7 @@ class BaseScraper(ABC):
                 
                 try:
                     self.logger.debug(f"Procesando anuncio {i}/{min(max_anuncios, len(enlaces))}")
-                    moto_data = self.extract_anuncio_data_robust(enlace)
+                    moto_data = self.extract_anuncio_data_enhanced(enlace)
                     
                     if moto_data and self.validate_moto_data(moto_data):
                         self.results.append(moto_data)
@@ -233,7 +217,7 @@ class BaseScraper(ABC):
                     else:
                         self.logger.debug(f"Moto no válida o datos incompletos")
                     
-                    time.sleep(0.5)
+                    time.sleep(1)
                     
                 except Exception as e:
                     self.logger.warning(f"Error extrayendo anuncio {i}: {e}")
@@ -244,21 +228,25 @@ class BaseScraper(ABC):
         except Exception as e:
             self.logger.error(f"Error procesando URL de búsqueda: {e}")
     
-    def get_anuncio_links(self) -> List[str]:
-        """Obtener enlaces de anuncios con selectores actualizados"""
+    def get_anuncio_links_enhanced(self) -> List[str]:
+        """Obtener enlaces con selectores mejorados y más scroll"""
         enlaces = []
         
         try:
-            # Hacer scroll para cargar contenido
-            self.scroll_to_load_content()
+            # SCROLL MAS EXTENSIVO
+            self.scroll_to_load_more_content()
             
-            # Selectores actualizados basados en la estructura real de Wallapop
+            # SELECTORES ACTUALIZADOS Y MAS COMPRENSIVOS
             link_selectors = [
                 "a[href*='/item/']",
+                "a[href*='/product/']",
                 ".card-product-info a",
                 ".item-card a",
                 "[data-testid='item-card'] a",
-                "a[data-testid*='item']"
+                "a[data-testid*='item']",
+                ".product-card a",
+                "[class*='Card'] a",
+                "[class*='Item'] a"
             ]
             
             for selector in link_selectors:
@@ -266,7 +254,7 @@ class BaseScraper(ABC):
                     elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
                     for element in elements:
                         href = element.get_attribute('href')
-                        if href and '/item/' in href and href not in enlaces:
+                        if href and ('/item/' in href or '/product/' in href) and href not in enlaces:
                             enlaces.append(href)
                 except:
                     continue
@@ -283,15 +271,20 @@ class BaseScraper(ABC):
             self.logger.error(f"Error obteniendo enlaces: {e}")
             return []
     
-    def scroll_to_load_content(self):
-        """Hacer scroll optimizado para cargar contenido dinámico"""
+    def scroll_to_load_more_content(self):
+        """Scroll más extensivo para cargar más contenido"""
         try:
-            max_scrolls = 2 if is_github_actions() else 3
+            # MAS SCROLLS PARA CARGAR MAS CONTENIDO
+            max_scrolls = 8 if is_github_actions() else 12
             
             for attempt in range(max_scrolls):
                 current_height = self.driver.execute_script("return document.body.scrollHeight")
+                
+                # Scroll gradual
+                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight * 0.8);")
+                time.sleep(1.5)
                 self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(1)
+                time.sleep(2)
                 
                 new_height = self.driver.execute_script("return document.body.scrollHeight")
                 if new_height == current_height:
@@ -299,29 +292,28 @@ class BaseScraper(ABC):
             
             # Volver arriba
             self.driver.execute_script("window.scrollTo(0, 0);")
-            time.sleep(0.5)
+            time.sleep(1)
             
         except Exception as e:
             self.logger.warning(f"Error durante scroll: {e}")
     
-    def extract_anuncio_data_robust(self, url: str) -> Optional[Dict]:
-        """Extraer datos con selectores actualizados de Wallapop"""
+    def extract_anuncio_data_enhanced(self, url: str) -> Optional[Dict]:
+        """EXTRACCION MEJORADA CON SELECTORES ACTUALIZADOS"""
         try:
             # Cargar página del anuncio
             self.driver.get(url)
-            time.sleep(1.5)
+            time.sleep(2.5)
             
-            # Extraer datos usando selectores actualizados
+            # EXTRAER DATOS CON SELECTORES CORREGIDOS
             data = {
                 'URL': url,
-                'Título': self.extract_titulo_wallapop(),
-                'Precio': self.extract_precio_wallapop_robust(),  # FUNCIÓN MEJORADA
-                'Kilometraje': self.extract_kilometraje_wallapop(),
-                'Año': self.extract_año_wallapop(),
-                'Vendedor': self.extract_vendedor_wallapop(),
-                'Ubicación': self.extract_ubicacion_wallapop(),
-                'Fecha_Publicacion': self.extract_fecha_publicacion_wallapop(),
-                'Descripcion': self.extract_descripcion_wallapop(),
+                'Título': self.extract_titulo_wallapop_fixed(),           
+                'Precio': self.extract_precio_wallapop_robust(),          
+                'Kilometraje': self.extract_kilometraje_wallapop_fixed(), 
+                'Año': self.extract_año_wallapop_fixed(),                 
+                'Vendedor': self.extract_vendedor_wallapop_fixed(),       
+                'Ubicación': self.extract_ubicacion_wallapop_fixed(),     
+                'Fecha_Publicacion': self.extract_fecha_publicacion_wallapop_fixed(),
                 'Fecha_Extraccion': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             
@@ -331,21 +323,331 @@ class BaseScraper(ABC):
             self.logger.warning(f"Error extrayendo datos de {url}: {e}")
             return None
     
-    def extract_titulo_wallapop(self) -> str:
-        """Extraer título con selector real de Wallapop"""
-        selectors = [
-            "h1.item-detail_ItemDetailTwoColumns__title__VtWrR",
-            "h1[class*='ItemDetailTwoColumns__title']",
-            "h1[class*='title']",
-            "h1"
-        ]
-        
-        return self._extract_text_by_selectors(selectors, "Sin título")
+    def extract_titulo_wallapop_fixed(self) -> str:
+        """TITULO CORREGIDO - Selectores actualizados"""
+        try:
+            # Esperar a que cargue
+            WebDriverWait(self.driver, 3).until(
+                EC.presence_of_element_located((By.TAG_NAME, "h1"))
+            )
+            
+            # SELECTORES ACTUALIZADOS PARA TITULO
+            selectors = [
+                # Selectores principales más actuales
+                "h1[data-testid='item-title']",
+                "h1.item-detail_title",
+                "h1[class*='title']",
+                "h1[class*='Title']",
+                "h1[class*='ItemDetail']",
+                # Fallbacks
+                "h1",
+                ".title h1",
+                "[data-testid*='title'] h1",
+                ".item-detail h1",
+                ".product-title"
+            ]
+            
+            for selector in selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if element and element.text.strip():
+                        title = element.text.strip()
+                        if len(title) > 5:  # Filtrar títulos muy cortos
+                            return title
+                except:
+                    continue
+            
+            # BUSQUEDA EN TODO EL HTML COMO ULTIMO RECURSO
+            try:
+                h1_elements = self.driver.find_elements(By.TAG_NAME, "h1")
+                for h1 in h1_elements:
+                    if h1.text.strip() and len(h1.text.strip()) > 5:
+                        return h1.text.strip()
+            except:
+                pass
+            
+            return "Sin título"
+            
+        except Exception as e:
+            self.logger.debug(f"Error extrayendo título: {e}")
+            return "Sin título"
+    
+    def extract_kilometraje_wallapop_fixed(self) -> str:
+        """KILOMETRAJE CORREGIDO - Búsqueda mejorada"""
+        try:
+            # Obtener todo el contenido de la página
+            page_source = self.driver.page_source.lower()
+            
+            # También buscar en elementos específicos
+            detail_elements = []
+            detail_selectors = [
+                ".item-detail",
+                ".product-details", 
+                ".description",
+                "[class*='detail']",
+                "[class*='info']",
+                "[class*='spec']"
+            ]
+            
+            for selector in detail_selectors:
+                try:
+                    elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    for elem in elements:
+                        detail_elements.append(elem.text.lower())
+                except:
+                    continue
+            
+            # Combinar todo el texto
+            all_text = f"{page_source} {' '.join(detail_elements)}"
+            
+            # PATRONES MEJORADOS PARA KILOMETRAJE
+            km_patterns = [
+                # Formatos exactos
+                r'(\d{1,3}\.?\d{0,3})\s*km\b',                           # "15.000 km"
+                r'(\d{1,3}\.?\d{0,3})\s*kilómetros?\b',                  # "15000 kilómetros"
+                r'(\d{1,3}\.?\d{0,3})\s*kms?\b',                         # "15 kms"
+                # Con contexto
+                r'kilometraje[:\s]*(\d{1,3}\.?\d{0,3})',                 # "kilometraje: 15000"
+                r'km[:\s]*(\d{1,3}\.?\d{0,3})',                          # "km: 15000"
+                r'recorridos[:\s]*(\d{1,3}\.?\d{0,3})',                  # "recorridos: 15000"
+                # Formatos con comas
+                r'(\d{1,3}),(\d{3})\s*km',                               # "15,000 km"
+                r'(\d{1,3}),(\d{3})\s*kilómetros?',                      # "15,000 kilómetros"
+                # Con separadores
+                r'(\d{1,3})\s*\.\s*(\d{3})\s*km',                        # "15 . 000 km"
+            ]
+            
+            km_candidates = []
+            
+            for pattern in km_patterns:
+                matches = re.finditer(pattern, all_text)
+                for match in matches:
+                    try:
+                        if len(match.groups()) == 2:  # Formato con separador
+                            km_value = int(match.group(1) + match.group(2))
+                        else:
+                            km_str = match.group(1).replace('.', '').replace(',', '')
+                            km_value = int(km_str)
+                        
+                        # Validar rango razonable para motos
+                        if 0 <= km_value <= 200000:
+                            km_candidates.append(km_value)
+                    except:
+                        continue
+            
+            if km_candidates:
+                # Tomar el km más común o el primero válido
+                km_final = max(set(km_candidates), key=km_candidates.count)
+                if km_final == 0:
+                    return "0 km"
+                elif km_final < 1000:
+                    return f"{km_final} km"
+                else:
+                    return f"{km_final:,} km".replace(',', '.')
+            
+            return "No especificado"
+            
+        except Exception as e:
+            self.logger.debug(f"Error extrayendo kilometraje: {e}")
+            return "No especificado"
+    
+    def extract_año_wallapop_fixed(self) -> str:
+        """AÑO CORREGIDO - Búsqueda mejorada"""
+        try:
+            # Obtener título y contenido
+            titulo = self.extract_titulo_wallapop_fixed()
+            page_source = self.driver.page_source
+            
+            # Combinar textos
+            combined_text = f"{titulo} {page_source}"
+            
+            # PATRONES MEJORADOS PARA AÑO
+            year_patterns = [
+                # En título (más confiable)
+                r'\b(20[1-2][0-9])\b(?!\s*(?:€|euros|km|cc|cv))',         # Año en título
+                # Con contexto
+                r'año[:\s]*(20[1-2][0-9])',                               # "año: 2020"
+                r'modelo[:\s]*(20[1-2][0-9])',                            # "modelo: 2020"
+                r'del[:\s]*(20[1-2][0-9])',                               # "del 2020"
+                r'matriculad[ao][:\s]*(20[1-2][0-9])',                    # "matriculada 2020"
+                # En descripción
+                r'comprada en (20[1-2][0-9])',                            # "comprada en 2020"
+                r'fabricado en (20[1-2][0-9])',                           # "fabricado en 2020"
+            ]
+            
+            year_candidates = []
+            
+            # Buscar primero en el título (más confiable)
+            titulo_lower = titulo.lower()
+            for pattern in year_patterns:
+                matches = re.finditer(pattern, titulo_lower)
+                for match in matches:
+                    try:
+                        year = int(match.group(1))
+                        if 2010 <= year <= 2025:
+                            year_candidates.append((year, 10))  # Peso alto para título
+                    except:
+                        continue
+            
+            # Buscar en el contenido general
+            content_lower = page_source.lower()
+            for pattern in year_patterns:
+                matches = re.finditer(pattern, content_lower)
+                for match in matches:
+                    try:
+                        year = int(match.group(1))
+                        if 2010 <= year <= 2025:
+                            year_candidates.append((year, 1))  # Peso normal
+                    except:
+                        continue
+            
+            if year_candidates:
+                # Ordenar por peso y tomar el de mayor peso
+                year_candidates.sort(key=lambda x: x[1], reverse=True)
+                return str(year_candidates[0][0])
+            
+            return "No especificado"
+            
+        except Exception as e:
+            self.logger.debug(f"Error extrayendo año: {e}")
+            return "No especificado"
+    
+    def extract_vendedor_wallapop_fixed(self) -> str:
+        """VENDEDOR CORREGIDO - Detecta comerciales mejor"""
+        try:
+            # SELECTORES ACTUALIZADOS PARA VENDEDOR
+            selectors = [
+                # Selectores principales
+                "h3[data-testid='seller-name']",
+                "h3.seller-name",
+                "h3[class*='seller']",
+                "h3[class*='user']",
+                # Fallbacks
+                ".seller-info h3",
+                ".user-info h3", 
+                ".profile h3",
+                "h3"
+            ]
+            
+            vendedor_text = ""
+            
+            for selector in selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if element and element.text.strip():
+                        vendedor_text = element.text.strip()
+                        break
+                except:
+                    continue
+            
+            if not vendedor_text:
+                return "Particular"
+            
+            # DETECCION MEJORADA DE COMERCIALES
+            vendedor_lower = vendedor_text.lower()
+            
+            # Palabras clave comerciales más específicas
+            commercial_keywords = [
+                # Formas jurídicas
+                's.l.', 'sl', 's.a.', 'sa', 's.l.u.', 'slu',
+                'sociedad', 'empresa', 'compañia', 'cia',
+                # Tipos de negocio
+                'concesionario', 'taller', 'motor', 'moto', 'auto',
+                'dealership', 'dealer', 'garage', 'workshop',
+                # Marcas conocidas
+                'honda', 'yamaha', 'kawasaki', 'suzuki', 'bmw',
+                'ktm', 'ducati', 'triumph', 'harley',
+                # Comerciales específicos
+                'mundimoto', 'motocity', 'motocard', 'motoplanet',
+                'bergmann', 'voge', 'rieju', 'gasgas',
+                # Palabras comerciales
+                'venta', 'ventas', 'comercial', 'importador',
+                'distribuidor', 'mayorista', 'tienda', 'shop'
+            ]
+            
+            # Buscar patrones comerciales
+            for keyword in commercial_keywords:
+                if keyword in vendedor_lower:
+                    return f"Comercial: {vendedor_text}"
+            
+            # Detectar patrones adicionales
+            commercial_patterns = [
+                r'\bS\.?L\.?\b',              # S.L.
+                r'\bS\.?A\.?\b',              # S.A.
+                r'\bLtd\.?\b',                # Ltd
+                r'\b\d{3}[\-\s]*\d{3}[\-\s]*\d{3}\b',  # Teléfonos
+                r'@',                         # Emails
+                r'www\.',                     # Webs
+            ]
+            
+            for pattern in commercial_patterns:
+                if re.search(pattern, vendedor_text):
+                    return f"Comercial: {vendedor_text}"
+            
+            return vendedor_text
+            
+        except Exception as e:
+            self.logger.debug(f"Error extrayendo vendedor: {e}")
+            return "Particular"
+    
+    def extract_ubicacion_wallapop_fixed(self) -> str:
+        """UBICACION CORREGIDA"""
+        try:
+            selectors = [
+                "a[data-testid='location']",
+                "a[class*='location']",
+                "a[class*='Location']",
+                ".location a",
+                ".item-location a",
+                "[class*='location'] a"
+            ]
+            
+            for selector in selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if element and element.text.strip():
+                        ubicacion = element.text.strip()
+                        # Limpiar prefijos
+                        ubicacion = ubicacion.replace("en ", "").replace("En ", "")
+                        return ubicacion
+                except:
+                    continue
+            
+            return "No especificado"
+            
+        except Exception as e:
+            self.logger.debug(f"Error extrayendo ubicación: {e}")
+            return "No especificado"
+    
+    def extract_fecha_publicacion_wallapop_fixed(self) -> str:
+        """FECHA CORREGIDA"""
+        try:
+            selectors = [
+                "span[data-testid='publication-date']",
+                "span[class*='date']",
+                "span[class*='time']",
+                ".publication-date",
+                ".item-date"
+            ]
+            
+            for selector in selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if element and element.text.strip():
+                        return element.text.strip()
+                except:
+                    continue
+            
+            return "No especificado"
+            
+        except Exception as e:
+            self.logger.debug(f"Error extrayendo fecha: {e}")
+            return "No especificado"
     
     def extract_precio_wallapop_robust(self) -> str:
-        """FUNCIÓN ADAPTADA: Extraer precio usando la lógica probada del scraper MOTICK"""
+        """FUNCION YA CORREGIDA - Mantener como está"""
         try:
-            # ESPERAR A QUE CARGUEN LOS PRECIOS (del scraper exitoso)
+            # ESPERAR A QUE CARGUEN LOS PRECIOS
             try:
                 WebDriverWait(self.driver, 5).until(
                     EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '€')]"))
@@ -353,7 +655,7 @@ class BaseScraper(ABC):
             except:
                 pass
             
-            # ESTRATEGIA 1: SELECTORES ESPECÍFICOS (del scraper exitoso)
+            # ESTRATEGIA 1: SELECTORES ESPECIFICOS
             price_selectors = [
                 "span.item-detail-price_ItemDetailPrice--standardFinanced__f9ceG",
                 ".item-detail-price_ItemDetailPrice--standardFinanced__f9ceG", 
@@ -377,7 +679,7 @@ class BaseScraper(ABC):
                 except:
                     continue
             
-            # ESTRATEGIA 2: BUSCAR CUALQUIER PRECIO (método exitoso del scraper MOTICK)
+            # ESTRATEGIA 2: BUSCAR CUALQUIER PRECIO
             try:
                 price_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), '€')]")
                 
@@ -388,7 +690,6 @@ class BaseScraper(ABC):
                         if not text:
                             continue
                         
-                        # REGEX PARA CAPTURAR PRECIOS REALISTAS
                         price_patterns = [
                             r'(\d{1,3}(?:\.\d{3})+)\s*€',
                             r'(\d{1,6})\s*€'
@@ -401,7 +702,6 @@ class BaseScraper(ABC):
                                     price_clean = price_match.replace('.', '')
                                     price_value = int(price_clean)
                                     
-                                    # RANGO PARA MOTOS: 500€ - 60,000€
                                     if 500 <= price_value <= 60000:
                                         formatted_price = f"{price_value:,}".replace(',', '.') + " €" if price_value >= 1000 else f"{price_value} €"
                                         valid_prices.append((price_value, formatted_price))
@@ -410,7 +710,6 @@ class BaseScraper(ABC):
                     except:
                         continue
                 
-                # Tomar el precio más alto como precio principal
                 if valid_prices:
                     valid_prices = sorted(set(valid_prices), key=lambda x: x[0], reverse=True)
                     return valid_prices[0][1]
@@ -425,16 +724,14 @@ class BaseScraper(ABC):
             return "No especificado"
     
     def _extract_price_from_text_wallapop(self, text: str) -> str:
-        """Extraer precio de texto - ADAPTADO del scraper MOTICK exitoso"""
+        """Extraer precio de texto - YA FUNCIONA"""
         if not text:
             return "No especificado"
         
-        # Limpiar texto (como en el scraper exitoso)
         clean_text = text.replace('&nbsp;', ' ').replace('\xa0', ' ').strip()
         if not clean_text:
             return "No especificado"
         
-        # REGEX ESPECÍFICOS PARA WALLAPOP (del scraper exitoso)
         price_patterns = [
             r'(\d{1,3}(?:\.\d{3})+)\s*€',           # "7.690 €"
             r'(\d{4,6})\s*€',                       # "7690 €"
@@ -454,7 +751,6 @@ class BaseScraper(ABC):
                         price_str = match.group(1).replace('.', '').replace(',', '')
                         price_value = int(price_str)
                     
-                    # RANGO PARA MOTOS: 500€ - 60,000€
                     if 500 <= price_value <= 60000:
                         return f"{price_value:,} €".replace(',', '.')
                 except:
@@ -462,214 +758,9 @@ class BaseScraper(ABC):
         
         return "No especificado"
     
-    def extract_descripcion_wallapop(self) -> str:
-        """Extraer descripción completa para análisis de año y km"""
-        selectors = [
-            "section.item-detail_ItemDetailTwoColumns__description__0DKb0",
-            "section[class*='description']",
-            "[class*='description']",
-            ".description"
-        ]
-        
-        descripcion = self._extract_text_by_selectors(selectors, "")
-        return descripcion[:500] if descripcion else ""
-    
-    def extract_año_wallapop(self) -> str:
-        """Extraer año usando la función robusta"""
-        try:
-            descripcion = self.extract_descripcion_wallapop()
-            titulo = self.extract_titulo_wallapop()
-            
-            año, _ = self.extract_year_and_km_universal(f"{titulo} {descripcion}")
-            return año
-            
-        except Exception as e:
-            self.logger.debug(f"Error extrayendo año: {e}")
-            return "No especificado"
-    
-    def extract_kilometraje_wallapop(self) -> str:
-        """Extraer kilometraje usando la función robusta"""
-        try:
-            descripcion = self.extract_descripcion_wallapop()
-            titulo = self.extract_titulo_wallapop()
-            
-            _, km = self.extract_year_and_km_universal(f"{titulo} {descripcion}")
-            return km if km else "No especificado"
-            
-        except Exception as e:
-            self.logger.debug(f"Error extrayendo km: {e}")
-            return "No especificado"
-    
-    def extract_year_and_km_universal(self, text: str) -> Tuple[str, str]:
-        """Función robusta de extracción adaptada"""
-        if not text:
-            return "No especificado", "No especificado"
-        
-        text_normalized = text.lower().replace('\n', ' ').replace('\t', ' ')
-        text_normalized = re.sub(r'\s+', ' ', text_normalized)
-        
-        # EXTRACCIÓN DE AÑO
-        year = "No especificado"
-        all_year_candidates = []
-        
-        year_patterns = [
-            (r'año\s*[:\-]\s*(201[3-9]|202[0-4])', 22, "año: directo"),
-            (r'año\s+(201[3-9]|202[0-4])', 20, "año XXXX"),
-            (r'del\s+año\s+(201[3-9]|202[0-4])', 20, "del año XXXX"),
-            (r'(?:modelo|model)\s+(?:del\s+)?(?:año\s+)?(201[3-9]|202[0-4])', 20, "modelo del año"),
-            (r'matriculad[ao]\s+(?:en\s+(?:el\s+año\s+)?)?(?:en\s+)?(201[3-9]|202[0-4])', 18, "matriculada"),
-            (r'(?:honda|yamaha|kawasaki|kymco|cb|mt|z|pcx|agility)\s+(?:del\s+año\s+|año\s+|de\s+)?(201[3-9]|202[0-4])', 18, "marca año"),
-            (r'del\s+(201[3-9]|202[0-4])(?!\s*(?:€|euros|km|kms|klm))(?:\s|$|\.|\,)', 14, "del XXXX"),
-            (r'\b(201[3-9]|202[0-4])\b(?!\s*(?:€|euros|km|kms|klm|cc|cv|hp|precio))', 8, "año standalone"),
-        ]
-        
-        exclude_patterns = [
-            r'(?:itv|itvs)\s+(?:hasta|vigente|válida|pasada|en|del|año|de)\s+(201[3-9]|202[0-4])',
-            r'revisión\s+(?:en|del|año|hasta|de)\s+(201[3-9]|202[0-4])',
-            r'(201[3-9]|202[0-4])€',
-            r'€(201[3-9]|202[0-4])',
-            r'(201[3-9]|202[0-4])cc',
-        ]
-        
-        for pattern, score, description in year_patterns:
-            matches = re.finditer(pattern, text_normalized)
-            for match in matches:
-                found_year = match.group(1)
-                
-                try:
-                    year_value = int(found_year)
-                    if 2013 <= year_value <= 2024:
-                        is_excluded = False
-                        for exclude_pattern in exclude_patterns:
-                            if re.search(exclude_pattern, match.group(0)):
-                                is_excluded = True
-                                break
-                        
-                        if not is_excluded:
-                            all_year_candidates.append({
-                                'year': found_year,
-                                'score': score
-                            })
-                except ValueError:
-                    continue
-        
-        if all_year_candidates:
-            year = min(candidate['year'] for candidate in all_year_candidates)
-        
-        # EXTRACCIÓN DE KILÓMETROS
-        km = "No especificado"
-        all_km_candidates = []
-        
-        km_patterns = [
-            r'km\s*[:\-]\s*(\d{1,3})\.(\d{3})',
-            r'kilómetros?\s*[:\-]\s*(\d{1,3})\.(\d{3})',
-            r'km\s*[:\-]\s*(\d+)',
-            r'(\d{1,3})\.(\d{3})\s*km',
-            r'(\d+)\s*km',
-            r'(?:solo|tiene|lleva|marca)\s+(\d{1,3})\.(\d{3})',
-            r'(?:solo|tiene|lleva|marca)\s+(\d+)',
-            r'(\d+)\s*mil\s*km',
-        ]
-        
-        for pattern in km_patterns:
-            matches = re.finditer(pattern, text_normalized)
-            for match in matches:
-                groups = match.groups()
-                
-                try:
-                    if len(groups) == 1:
-                        km_value = int(groups[0])
-                        if 'mil' in pattern:
-                            km_value = km_value * 1000
-                    elif len(groups) == 2:
-                        if 'mil' in pattern:
-                            km_value = int(groups[0]) * 1000 + int(groups[1])
-                        else:
-                            km_value = int(groups[0] + groups[1])
-                    
-                    if 0 <= km_value <= 200000:
-                        all_km_candidates.append({
-                            'value': km_value,
-                            'context': match.group(0)
-                        })
-                        
-                except (ValueError, TypeError):
-                    continue
-        
-        if all_km_candidates:
-            exclude_km_keywords = ['rueda', 'neumático', 'revisión', 'service', 'velocidad', 'hora']
-            valid_candidates = []
-            
-            for c in all_km_candidates:
-                text_context = c['context'].lower()
-                if not any(keyword in text_context for keyword in exclude_km_keywords):
-                    valid_candidates.append(c)
-            
-            if valid_candidates:
-                km_value = max(c['value'] for c in valid_candidates)
-                if km_value == 0:
-                    km = "0 km"
-                else:
-                    km = f"{km_value:,} km".replace(',', '.')
-        
-        return year, km
-    
-    def extract_vendedor_wallapop(self) -> str:
-        """Extraer vendedor con selector real de Wallapop"""
-        selectors = [
-            "h3.text-truncate.mb-0.mt-md-0.me-2",
-            "h3[class*='text-truncate']",
-            "[class*='seller'] h3",
-            ".seller-name",
-            "h3"
-        ]
-        
-        return self._extract_text_by_selectors(selectors, "Particular")
-    
-    def extract_ubicacion_wallapop(self) -> str:
-        """Extraer ubicación con selector real de Wallapop"""
-        selectors = [
-            "a.item-detail-location_ItemDetailLocation__link__OmVsa",
-            "a[class*='ItemDetailLocation__link']",
-            "[class*='location'] a",
-            ".location a"
-        ]
-        
-        ubicacion = self._extract_text_by_selectors(selectors, "No especificado")
-        
-        if ubicacion and ubicacion != "No especificado":
-            ubicacion = ubicacion.replace("en ", "").strip()
-        
-        return ubicacion
-    
-    def extract_fecha_publicacion_wallapop(self) -> str:
-        """Extraer fecha con selector real de Wallapop"""
-        selectors = [
-            "span.item-detail-stats_ItemDetailStats__description__015I3",
-            "span[class*='ItemDetailStats__description']",
-            "[class*='stats'] span",
-            ".stats span"
-        ]
-        
-        return self._extract_text_by_selectors(selectors, "No especificado")
-    
-    def _extract_text_by_selectors(self, selectors: List[str], default: str = "") -> str:
-        """Extraer texto usando múltiples selectores con timeout corto"""
-        for selector in selectors:
-            try:
-                element = WebDriverWait(self.driver, 1).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-                )
-                text = element.text.strip()
-                if text:
-                    return text
-            except:
-                continue
-        return default
-    
     def is_valid_anuncio_link(self, url: str) -> bool:
         """Validar si un enlace es válido para procesar"""
-        if not url or '/item/' not in url:
+        if not url or ('/item/' not in url and '/product/' not in url):
             return False
         
         excluded_patterns = [
