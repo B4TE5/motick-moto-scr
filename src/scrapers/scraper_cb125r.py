@@ -1,11 +1,16 @@
 """
 ================================================================================
-                                 SCRAPER CB125R                     
+                          SCRAPER CB125R CORREGIDO                     
 ================================================================================
 
 Autor: Carlos Peraza
-Versión: 2.0 
-Fecha: Agosto 2025
+Version: 3.0 
+Fecha: Septiembre 2025
+
+CORRECCIONES:
+- URLs optimizadas para encontrar mas CB125R
+- Validacion mejorada del modelo
+- Hereda de BaseScraper corregido
 
 ================================================================================
 """
@@ -16,18 +21,19 @@ from typing import Dict, List, Optional
 from scrapers.base_scraper import BaseScraper
 
 class ScraperCB125R(BaseScraper):
-    """Scraper específico para Honda CB125R con URLs extendidas"""
+    """Scraper especifico para Honda CB125R CORREGIDO"""
     
     def __init__(self):
         super().__init__('cb125r')
         self.logger = logging.getLogger(__name__)
         
-        # Configuración específica del modelo
+        # Configuracion especifica del modelo
         self.model_patterns = [
             r'\bcb[\-\s]*125[\-\s]*r\b',
             r'\bcb125r\b',
             r'\bcb\s*125\s*r\b',
-            r'\bcb\s*125[\-\.\/]\s*r\b'
+            r'\bcb\s*125[\-\.\/]\s*r\b',
+            r'\bhonda\s+cb\s*125\s*r\b'
         ]
         
         self.exclude_patterns = [
@@ -35,126 +41,108 @@ class ScraperCB125R(BaseScraper):
             r'\bcb[\-\s]*250[\-\s]*r\b',  # CB250R
             r'\bcb[\-\s]*500[\-\s]*r\b',  # CB500R
             r'\bcb[\-\s]*650[\-\s]*r\b',  # CB650R
-            r'\bcbr[\-\s]*125\b',         # CBR125 (diferente modelo)
+            r'\bcbr[\-\s]*125\b',         # CBR125
             r'\bcbr\b'                    # CBR en general
         ]
         
         self.logger.info(f"Scraper CB125R inicializado - Precio: {self.modelo_config['precio_min']}€-{self.modelo_config['precio_max']}€")
     
     def get_search_urls(self) -> List[str]:
-        """CORREGIDO: Generar MUCHAS MAS URLs de búsqueda para CB125R"""
+        """CORREGIDO: URLs optimizadas para encontrar mas CB125R"""
         min_price = self.modelo_config['precio_min']
         max_price = self.modelo_config['precio_max']
         
         urls = []
         
-        # TERMINOS DE BUSQUEDA PRINCIPALES EXPANDIDOS
-        base_queries = [
-            # Búsquedas principales
+        # CONSULTAS PRINCIPALES OPTIMIZADAS
+        main_queries = [
             "honda%20cb125r",
             "honda%20cb%20125%20r", 
             "cb125r",
             "cb%20125%20r",
             "honda%20cb125r%20moto",
-            "moto%20honda%20cb125r",
-            "cb125r%20honda",
-            "honda%20cb%20125%20deportiva",
-            
-            # Por años específicos (más URLs)
-            "honda%20cb125r%202018",
-            "honda%20cb125r%202019",
-            "honda%20cb125r%202020",
-            "honda%20cb125r%202021",
-            "honda%20cb125r%202022",
-            "honda%20cb125r%202023",
-            "honda%20cb125r%202024",
-            "honda%20cb125r%202025",
-            
-            # Combinaciones con características
-            "cb125r%20deportiva",
-            "cb125r%20naked",
-            "cb125r%20sport",
+            "moto%20honda%20cb125r"
+        ]
+        
+        # CONSULTAS POR AÑOS (2018-2024)
+        year_queries = []
+        for year in range(2018, 2025):
+            year_queries.extend([
+                f"honda%20cb125r%20{year}",
+                f"cb125r%20{year}",
+                f"honda%20cb%20125%20r%20{year}"
+            ])
+        
+        # CONSULTAS CON CARACTERISTICAS
+        feature_queries = [
+            "honda%20cb125r%20deportiva",
+            "honda%20cb125r%20naked",
             "honda%20cb125r%20abs",
-            "honda%20cb125r%20led",
-            "moto%20deportiva%20125%20honda",
-            "moto%20125%20honda%20cb",
-            
-            # Términos alternativos
-            "honda%20cb%20125%20sport",
+            "cb125r%20sport",
             "honda%20125%20deportiva",
-            "honda%20naked%20125",
-            
-            # Búsquedas por rangos de precios
-            "honda%20cb125r%20barata",
+            "moto%20deportiva%20125%20honda"
+        ]
+        
+        # CONSULTAS DE MERCADO
+        market_queries = [
             "honda%20cb125r%20segunda%20mano",
-            "honda%20cb125r%20usada",
+            "honda%20cb125r%20usado",
             "honda%20cb125r%20ocasion",
-            "cb125r%20oferta",
-            "cb125r%20precio",
-            
-            # Búsquedas por estado
-            "honda%20cb125r%20seminueva",
-            "honda%20cb125r%20como%20nueva",
-            "honda%20cb125r%20pocos%20km",
-            "honda%20cb125r%20poco%20uso",
-            
-            # Con errores ortográficos comunes
-            "honda%20cb125%20r",
+            "cb125r%20particular",
+            "honda%20cb125r%20seminuevo"
+        ]
+        
+        # CONSULTAS CON ERRORES COMUNES
+        typo_queries = [
             "honda%20cb%20125r",
+            "honda%20cb125%20r",
             "hond%20cb125r",
             "honda%20cb125",
             "honda%20125%20cb"
         ]
         
-        # ORDENAMIENTOS PARA CADA BUSQUEDA
+        # COMBINAR TODAS LAS CONSULTAS
+        all_queries = main_queries + year_queries + feature_queries + market_queries + typo_queries
+        
+        # ORDENAMIENTOS
         orderings = [
             "",  # Sin ordenamiento
             "&order_by=newest",
             "&order_by=price_low_to_high", 
-            "&order_by=price_high_to_low",
-            "&order_by=closest"
+            "&order_by=price_high_to_low"
         ]
         
-        # GENERAR URLs CON TODOS LOS ORDENAMIENTOS
-        for query in base_queries:
+        # GENERAR URLs CON PRECIO
+        for query in all_queries:
             for ordering in orderings:
-                # URL básica con filtro de precio
                 url = f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}{ordering}"
                 urls.append(url)
         
-        # BUSQUEDAS POR REGIONES PRINCIPALES (MAS REGIONES)
+        # BUSQUEDAS POR REGIONES PRINCIPALES
         main_regions = [
             ("madrid", "40.4168", "-3.7038"),
             ("barcelona", "41.3851", "2.1734"),
             ("valencia", "39.4699", "-0.3763"),
             ("sevilla", "37.3891", "-5.9845"),
-            ("bilbao", "43.2627", "-2.9253"),
-            ("zaragoza", "41.6488", "-0.8891"),
-            ("malaga", "36.7196", "-4.4214"),
-            ("murcia", "37.9922", "-1.1307"),
-            ("palma", "39.5696", "2.6502"),
-            ("las%20palmas", "28.1248", "-15.4300")
+            ("bilbao", "43.2627", "-2.9253")
         ]
         
-        main_queries = ["honda%20cb125r", "cb125r", "honda%20cb%20125"]
+        region_queries = ["honda%20cb125r", "cb125r"]
         
         for region, lat, lon in main_regions:
-            for query in main_queries:
-                for ordering in orderings[:3]:  # Solo 3 ordenamientos por región
+            for query in region_queries:
+                for ordering in orderings[:2]:  # Solo 2 ordenamientos por region
                     url = f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_price}&max_sale_price={max_price}&latitude={lat}&longitude={lon}&distance=50000{ordering}"
                     urls.append(url)
         
-        # BUSQUEDAS POR RANGOS DE PRECIOS ESPECIFICOS
+        # BUSQUEDAS POR RANGOS DE PRECIOS
         price_ranges = [
-            (min_price, min_price + 500),
-            (min_price + 500, min_price + 1000), 
-            (min_price + 1000, min_price + 1500),
-            (min_price + 1500, max_price)
+            (min_price, min_price + 800),
+            (min_price + 600, min_price + 1500), 
+            (min_price + 1200, max_price)
         ]
         
-        main_price_queries = ["honda%20cb125r", "cb125r"]
-        
-        for query in main_price_queries:
+        for query in ["honda%20cb125r", "cb125r"]:
             for min_p, max_p in price_ranges:
                 url = f"https://es.wallapop.com/app/search?keywords={query}&min_sale_price={min_p}&max_sale_price={max_p}"
                 urls.append(url)
@@ -162,34 +150,27 @@ class ScraperCB125R(BaseScraper):
         # BUSQUEDAS SIN FILTROS DE PRECIO (para encontrar gangas)
         no_price_queries = [
             "honda%20cb125r%20ganga",
-            "honda%20cb125r%20regalo", 
             "honda%20cb125r%20urge",
-            "cb125r%20barata"
+            "cb125r%20barato"
         ]
         
         for query in no_price_queries:
             url = f"https://es.wallapop.com/app/search?keywords={query}"
             urls.append(url)
         
-        # ELIMINAR DUPLICADOS MANTENIENDO ORDEN
-        unique_urls = []
-        seen = set()
-        for url in urls:
-            if url not in seen:
-                unique_urls.append(url)
-                seen.add(url)
+        # ELIMINAR DUPLICADOS
+        unique_urls = list(dict.fromkeys(urls))
         
-        self.logger.info(f"{len(unique_urls)} URLs generadas para CB125R (vs ~25 originales)")
+        self.logger.info(f"{len(unique_urls)} URLs generadas para CB125R")
         return unique_urls
     
     def validate_moto_data(self, moto_data: Dict) -> bool:
-        """Validar si los datos corresponden realmente a una Honda CB125R"""
+        """CORREGIDO: Validacion mejorada para Honda CB125R"""
         try:
-            titulo = moto_data.get('Título', '').lower()
+            titulo = moto_data.get('Titulo', '').lower()
             
-            # VALIDACION ESTRICTA PERO FLEXIBLE
-            if not titulo or titulo == "sin título":
-                # Si no hay título, validar por precio al menos
+            if not titulo or titulo == "sin titulo":
+                # Si no hay titulo, validar por precio
                 precio_text = moto_data.get('Precio', '')
                 if precio_text and precio_text != "No especificado":
                     try:
@@ -199,7 +180,6 @@ class ScraperCB125R(BaseScraper):
                             min_price = self.modelo_config['precio_min']
                             max_price = self.modelo_config['precio_max']
                             
-                            # Si el precio está en rango, aceptar (puede ser CB125R)
                             if min_price <= price <= max_price:
                                 return True
                     except:
@@ -208,20 +188,22 @@ class ScraperCB125R(BaseScraper):
             
             # VERIFICAR QUE SEA HONDA CB125R
             honda_found = any(word in titulo for word in ['honda', 'hond'])
-            cb125r_found = any(pattern in titulo for pattern in ['cb125r', 'cb 125 r', 'cb-125-r', 'cb 125r'])
+            cb125r_patterns = ['cb125r', 'cb 125 r', 'cb-125-r', 'cb 125r', 'cb125 r']
+            cb125r_found = any(pattern in titulo for pattern in cb125r_patterns)
             
-            # Excluir otros modelos
-            excluded = any(word in titulo for word in ['cb125f', 'cb250r', 'cb500r', 'cbr125', 'cbr'])
+            # Excluir otros modelos CB
+            excluded_models = ['cb125f', 'cb250r', 'cb500r', 'cbr125', 'cbr', 'cb125 f']
+            excluded = any(model in titulo for model in excluded_models)
             
             if excluded:
                 self.logger.debug(f"Excluido por ser otro modelo CB: {titulo}")
                 return False
             
-            # Si encuentra CB125R (con o sin Honda), es válido
+            # Si encuentra CB125R, es valido
             if cb125r_found:
                 return True
             
-            # Si solo encuentra Honda pero está en rango de precio, puede ser válido
+            # Si solo encuentra Honda en rango de precio, puede ser valido
             if honda_found:
                 precio_text = moto_data.get('Precio', '')
                 if precio_text and precio_text != "No especificado":
@@ -232,7 +214,8 @@ class ScraperCB125R(BaseScraper):
                             min_price = self.modelo_config['precio_min']
                             max_price = self.modelo_config['precio_max']
                             
-                            if min_price <= price <= max_price:
+                            # Rango mas estricto para validacion sin modelo explicito
+                            if min_price + 200 <= price <= max_price - 200:
                                 return True
                     except:
                         pass
@@ -243,12 +226,9 @@ class ScraperCB125R(BaseScraper):
             self.logger.warning(f"Error validando moto: {e}")
             return False
 
-# ============================================================================
 # FUNCION PRINCIPAL
-# ============================================================================
-
 def run_cb125r_scraper():
-    """Función principal para ejecutar el scraper de CB125R"""
+    """Funcion principal para ejecutar el scraper de CB125R CORREGIDO"""
     try:
         scraper = ScraperCB125R()
         df_results = scraper.scrape_model()
@@ -274,4 +254,4 @@ if __name__ == "__main__":
     if results is not None and not results.empty:
         print(f"\nPrimeras 3 motos encontradas:")
         for i, (_, moto) in enumerate(results.head(3).iterrows()):
-            print(f"   {i+1}. {moto['Título']} - {moto['Precio']} - {moto['Año']}")
+            print(f"   {i+1}. {moto['Titulo']} - {moto['Precio']} - {moto['Año']}")
