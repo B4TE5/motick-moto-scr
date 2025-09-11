@@ -1,11 +1,17 @@
 """
 ================================================================================
-                                BASE SCRAPER                      
+                            BASE SCRAPER CORREGIDO                      
 ================================================================================
 
 Autor: Carlos Peraza
-Version: 3.0 
+Version: 4.0 
 Fecha: Septiembre 2025
+
+CORRECCIONES APLICADAS:
+1. Consistencia en nombres de campos (Titulo sin tilde)
+2. Extractores mejorados y más robustos
+3. Debug extenso para identificar problemas
+4. Manejo de errores mejorado
 
 ================================================================================
 """
@@ -30,7 +36,7 @@ from tqdm import tqdm
 from config import get_modelo_config, SELENIUM_CONFIG, is_github_actions
 
 class BaseScraper(ABC):
-    """Clase base ULTRA OPTIMIZADA para scrapers de modelos especificos de motos"""
+    """Clase base CORREGIDA para scrapers con debug extenso"""
     
     def __init__(self, modelo_key: str):
         """Inicializar scraper base"""
@@ -43,19 +49,23 @@ class BaseScraper(ABC):
         self.results = []
         self.processed_urls = set()
         
-        # CONTADORES PARA MONITORING
-        self.total_processed = 0
-        self.successful_extractions = 0
-        self.failed_extractions = 0
-        self.examples_shown = 0
+        # CONTADORES PARA DEBUG
+        self.debug_counters = {
+            'urls_procesadas': 0,
+            'enlaces_encontrados': 0,
+            'anuncios_procesados': 0,
+            'datos_extraidos': 0,
+            'validaciones_exitosas': 0,
+            'errores_extraccion': 0
+        }
         
-        self.logger.info(f"Scraper ULTRA OPTIMIZADO iniciado para {self.modelo_config['nombre']}")
+        self.logger.info(f"Scraper CORREGIDO iniciado para {self.modelo_config['nombre']}")
     
     def setup_driver(self) -> webdriver.Chrome:
-        """Configurar driver Chrome ULTRA RAPIDO"""
+        """Configurar driver Chrome optimizado"""
         options = Options()
         
-        # CONFIGURACIONES DE MAXIMA VELOCIDAD
+        # Configuraciones de rendimiento
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
@@ -66,26 +76,25 @@ class BaseScraper(ABC):
         options.add_argument("--disable-background-networking")
         options.add_argument("--disable-background-timer-throttling")
         options.add_argument("--disable-renderer-backgrounding")
-        options.add_argument("--disable-backgrounding-occluded-windows")
         options.add_argument("--disable-client-side-phishing-detection")
         options.add_argument("--disable-sync")
         options.add_argument("--disable-translate")
         options.add_argument("--hide-scrollbars")
         options.add_argument("--mute-audio")
         
-        # SUPRIMIR LOGS COMPLETAMENTE
+        # Suprimir logs
         options.add_argument("--log-level=3")
         options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
         options.add_experimental_option('useAutomationExtension', False)
         
-        # User agent optimizado
+        # User agent
         options.add_argument("--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
         
-        # Configuracion para GitHub Actions
+        # GitHub Actions
         if is_github_actions():
             options.add_argument("--headless")
         
-        # Configuraciones de rendimiento MAXIMAS
+        # Configuraciones de rendimiento
         prefs = {
             "profile.default_content_setting_values": {
                 "images": 2,
@@ -101,15 +110,15 @@ class BaseScraper(ABC):
         try:
             driver = webdriver.Chrome(options=options)
             
-            # TIMEOUTS ULTRA AGRESIVOS
-            driver.implicitly_wait(0.3)  # REDUCIDO de 3.0 a 0.3
-            driver.set_page_load_timeout(15)  # REDUCIDO de 45 a 15
-            driver.set_script_timeout(10)  # REDUCIDO de 30 a 10
+            # Timeouts optimizados
+            driver.implicitly_wait(1.0)
+            driver.set_page_load_timeout(20)
+            driver.set_script_timeout(15)
             
             if not is_github_actions():
                 driver.maximize_window()
             
-            self.logger.info("Driver ULTRA OPTIMIZADO configurado correctamente")
+            self.logger.info("Driver configurado correctamente")
             return driver
             
         except Exception as e:
@@ -117,60 +126,55 @@ class BaseScraper(ABC):
             raise
     
     def scrape_model(self) -> pd.DataFrame:
-        """Metodo principal ULTRA OPTIMIZADO para hacer scraping"""
+        """Método principal para scraping con debug mejorado"""
         try:
-            self.logger.info(f"Iniciando scraping ULTRA OPTIMIZADO de {self.modelo_config['nombre']}")
+            self.logger.info(f"Iniciando scraping CORREGIDO de {self.modelo_config['nombre']}")
             
             # Configurar driver
             self.driver = self.setup_driver()
             
-            # Obtener URLs de busqueda
+            # Obtener URLs
             search_urls = self.get_search_urls()
-            self.logger.info(f"{len(search_urls)} URLs de busqueda generadas")
+            self.logger.info(f"{len(search_urls)} URLs de búsqueda generadas")
             
-            # TIMEOUTS OPTIMIZADOS PARA VELOCIDAD
+            # Timeouts
             start_time = time.time()
             max_total_time = 14400 if is_github_actions() else 18000  # 4-5 horas
-            max_urls_to_process = 50 if is_github_actions() else 100  # LIMITAR URLS PARA VELOCIDAD
+            max_urls_to_process = 25 if is_github_actions() else 50
             
-            # PROCESAR SOLO UN SUBCONJUNTO DE URLS PARA VELOCIDAD
+            # Procesar URLs
             urls_to_process = search_urls[:max_urls_to_process]
-            self.logger.info(f"OPTIMIZACION: Procesando {len(urls_to_process)} URLs de {len(search_urls)} totales")
+            self.logger.info(f"Procesando {len(urls_to_process)} URLs de {len(search_urls)} totales")
             
             for i, url in enumerate(urls_to_process, 1):
-                # Verificar tiempo total
+                # Verificar tiempo
                 elapsed_time = time.time() - start_time
                 if elapsed_time > max_total_time:
-                    self.logger.warning(f"Tiempo limite alcanzado ({max_total_time/3600:.1f} horas)")
+                    self.logger.warning(f"Tiempo límite alcanzado")
                     break
                 
                 self.logger.info(f"[{i}/{len(urls_to_process)}] Procesando URL: {url[:80]}...")
                 
                 try:
-                    motos_esta_url = self.process_search_url_ultra_optimized(url, i)
-                    self.logger.info(f"[{i}/{len(urls_to_process)}] RESULTADO: {motos_esta_url} motos extraidas")
+                    motos_esta_url = self.process_search_url_corrected(url, i)
+                    self.debug_counters['urls_procesadas'] += 1
+                    self.logger.info(f"[{i}/{len(urls_to_process)}] RESULTADO: {motos_esta_url} motos extraídas")
                     
-                    # MOSTRAR PROGRESO CADA 10 URLs
-                    if i % 10 == 0:
-                        self._show_progress_report()
-                    
-                    time.sleep(1)  # REDUCIDO de 3 a 1 segundo entre URLs
+                    time.sleep(1)
                     
                 except Exception as e:
                     self.logger.warning(f"Error procesando URL {i}: {e}")
                     continue
             
-            # Convertir resultados a DataFrame
+            # Resultado final
             if self.results:
                 df = pd.DataFrame(self.results)
                 self.logger.info(f"SCRAPING COMPLETADO: {len(df)} motos encontradas")
-                
-                # MOSTRAR RESUMEN FINAL DETALLADO
-                self._show_final_summary()
-                
+                self._show_debug_summary()
                 return df
             else:
                 self.logger.warning("No se encontraron resultados")
+                self._show_debug_summary()
                 return pd.DataFrame()
                 
         except Exception as e:
@@ -184,81 +188,79 @@ class BaseScraper(ABC):
                 except:
                     pass
     
-    def process_search_url_ultra_optimized(self, url: str, url_number: int) -> int:
-        """ULTRA OPTIMIZADO: Procesar URL con implementacion rapida del boton 'Cargar mas'"""
-        max_url_time = 600 if is_github_actions() else 900  # REDUCIDO: 10-15 min por URL
+    def process_search_url_corrected(self, url: str, url_number: int) -> int:
+        """Procesar URL con manejo de errores mejorado"""
+        max_url_time = 900  # 15 minutos por URL
         start_url_time = time.time()
         motos_esta_url = 0
         
         try:
-            # NAVEGACION ULTRA RAPIDA
+            # Navegar
             self.driver.get(url)
-            time.sleep(2)  # REDUCIDO de 5 a 2
+            time.sleep(3)
             
-            # ACCEPT COOKIES RAPIDO
-            self._accept_cookies_fast()
+            # Aceptar cookies
+            self._accept_cookies()
             
-            # IMPLEMENTAR CARGA INTELIGENTE DE ANUNCIOS (del scraper MOTICK)
-            total_enlaces = self._smart_load_all_ads_optimized()
+            # Cargar más anuncios
+            total_enlaces = self._smart_load_ads()
+            self.debug_counters['enlaces_encontrados'] += total_enlaces
             
             if total_enlaces == 0:
                 self.logger.warning(f"[URL {url_number}] No se encontraron enlaces")
                 return 0
             
-            # OBTENER ENLACES FINALES
-            enlaces = self._get_anuncio_links_ultra_fast()
+            # Obtener enlaces finales
+            enlaces = self._get_anuncio_links()
             
             if not enlaces:
-                self.logger.warning(f"[URL {url_number}] No se encontraron enlaces procesables")
+                self.logger.warning(f"[URL {url_number}] No se pudieron extraer enlaces")
                 return 0
             
-            self.logger.info(f"[URL {url_number}] Procesando {len(enlaces)} enlaces encontrados")
+            self.logger.info(f"[URL {url_number}] Procesando {len(enlaces)} enlaces")
             
-            # PROCESAR ANUNCIOS CON BARRA DE PROGRESO
-            motos_esta_url = self._process_anuncios_ultra_fast(enlaces, url_number, start_url_time, max_url_time)
+            # Procesar anuncios
+            motos_esta_url = self._process_anuncios_corrected(enlaces, url_number)
             
             return motos_esta_url
                     
         except Exception as e:
-            self.logger.error(f"Error procesando URL de busqueda: {e}")
+            self.logger.error(f"Error procesando URL: {e}")
             return 0
     
-    def _accept_cookies_fast(self):
-        """Acepta cookies de forma ultra rapida"""
+    def _accept_cookies(self):
+        """Acepta cookies rápidamente"""
         try:
-            cookie_button = WebDriverWait(self.driver, 2).until(
+            cookie_button = WebDriverWait(self.driver, 3).until(
                 EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))
             )
             cookie_button.click()
-            time.sleep(0.3)
+            time.sleep(1)
         except:
             pass
     
-    def _smart_load_all_ads_optimized(self) -> int:
-        """Carga todos los anuncios de forma inteligente - BASADO EN SCRAPER MOTICK"""
-        expected_count = 50  # OBJETIVO REALISTA
-        max_clicks = 8  # REDUCIDO de 20 a 8
+    def _smart_load_ads(self) -> int:
+        """Carga anuncios usando el botón 'Cargar más'"""
+        target_count = 50
+        max_clicks = 5
         
-        # Scroll inicial ultra rapido
-        for i in range(2):
+        # Scroll inicial
+        for i in range(3):
             self.driver.execute_script("window.scrollBy(0, 1000);")
-            time.sleep(0.2)
+            time.sleep(0.5)
         
         initial_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
-        
         clicks_realizados = 0
         last_count = initial_count
         
         for click_num in range(max_clicks):
-            # Scroll rapido hasta abajo
+            # Scroll al final
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(0.5)
+            time.sleep(1)
             
-            if self._find_and_click_load_more_fast():
+            if self._click_load_more():
                 clicks_realizados += 1
-                
-                # Espera MINIMA para carga
-                time.sleep(1)  # REDUCIDO de 4 a 1
+                time.sleep(2)
                 
                 new_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
                 
@@ -266,14 +268,14 @@ class BaseScraper(ABC):
                     self.logger.info(f"[SMART] Clic {clicks_realizados}: {last_count} -> {new_count} (+{new_count - last_count})")
                     last_count = new_count
                     
-                    if new_count >= expected_count:
+                    if new_count >= target_count:
                         self.logger.info(f"[SMART] Objetivo alcanzado: {new_count} anuncios")
                         break
                 else:
                     self.logger.info(f"[SMART] Sin nuevos anuncios, fin del contenido")
                     break
             else:
-                self.logger.info(f"[SMART] Boton no encontrado, fin del contenido")
+                self.logger.info(f"[SMART] Botón no encontrado, fin del contenido")
                 break
         
         final_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
@@ -281,19 +283,14 @@ class BaseScraper(ABC):
         
         return final_count
     
-    def _find_and_click_load_more_fast(self) -> bool:
-        """Busca y hace clic en 'Cargar mas' - OPTIMIZADO del scraper MOTICK"""
-        
-        # SELECTORES OPTIMIZADOS del scraper MOTICK
+    def _click_load_more(self) -> bool:
+        """Busca y hace clic en 'Cargar más'"""
         selectors = [
             ('css', 'walla-button[text="Cargar más"]'),
             ('css', 'walla-button[text*="Cargar"]'),
             ('css', 'button.walla-button__button'),
-            ('css', '.walla-button__button'),
             ('xpath', '//span[text()="Cargar más"]/ancestor::button'),
-            ('xpath', '//span[contains(text(), "Cargar")]/ancestor::button'),
-            ('xpath', '//button[contains(@class, "walla-button")]'),
-            ('css', '[class*="load-more"]')
+            ('xpath', '//button[contains(@class, "walla-button")]')
         ]
         
         for selector_type, selector in selectors:
@@ -305,26 +302,18 @@ class BaseScraper(ABC):
                 
                 for element in elements:
                     try:
-                        if not element.is_displayed() or not element.is_enabled():
-                            continue
-                        
-                        # Scroll y clic ULTRA RAPIDO
-                        self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
-                        time.sleep(0.1)  # MINIMO
-                        
-                        try:
-                            element.click()
-                            self.logger.info(f"Clic exitoso en 'Cargar mas' con selector: {selector_type}:{selector}")
-                            time.sleep(0.3)
-                            return True
-                        except:
+                        if element.is_displayed() and element.is_enabled():
+                            self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
+                            time.sleep(0.5)
+                            
                             try:
-                                self.driver.execute_script("arguments[0].click();", element)
-                                self.logger.info(f"Clic con JS exitoso en 'Cargar mas'")
-                                time.sleep(0.3)
+                                element.click()
+                                self.logger.info(f"Clic exitoso en 'Cargar más'")
                                 return True
                             except:
-                                continue
+                                self.driver.execute_script("arguments[0].click();", element)
+                                self.logger.info(f"Clic con JS exitoso")
+                                return True
                     except:
                         continue
             except:
@@ -332,15 +321,14 @@ class BaseScraper(ABC):
         
         return False
     
-    def _get_anuncio_links_ultra_fast(self) -> List[str]:
-        """ULTRA RAPIDO: Obtener enlaces con selectores optimizados"""
+    def _get_anuncio_links(self) -> List[str]:
+        """Obtener enlaces de anuncios"""
         enlaces = []
         
         try:
-            # SELECTORES ULTRA RAPIDOS
+            # Selectores más específicos
             link_selectors = [
-                'a[href*="/item/"]',
-                'a[href*="/app/user/"]'
+                'a[href*="/item/"]'
             ]
             
             for selector in link_selectors:
@@ -353,133 +341,130 @@ class BaseScraper(ABC):
                 except:
                     continue
             
-            return list(set(enlaces))  # Eliminar duplicados
+            return list(set(enlaces))
             
         except Exception as e:
             self.logger.error(f"Error obteniendo enlaces: {e}")
             return []
     
-    def _process_anuncios_ultra_fast(self, enlaces: List[str], url_number: int, start_url_time: float, max_url_time: float) -> int:
-        """Procesar anuncios con VELOCIDAD MAXIMA y logging detallado"""
+    def _process_anuncios_corrected(self, enlaces: List[str], url_number: int) -> int:
+        """Procesar anuncios con extracción corregida"""
         anuncios_procesados = 0
-        max_anuncios_por_url = 30 if is_github_actions() else 50  # LIMITE REALISTA
+        max_anuncios = 30
         
-        # CONTADORES PARA MONITORING DETALLADO
-        precios_ok = 0
-        km_ok = 0
-        titles_ok = 0
+        enlaces_a_procesar = enlaces[:max_anuncios]
         
-        # USAR TQDM PARA BARRA DE PROGRESO
-        enlaces_a_procesar = enlaces[:max_anuncios_por_url]
-        
-        for i, enlace in enumerate(tqdm(enlaces_a_procesar, desc=f"URL {url_number}", colour="green"), 1):
-            # Verificar timeout
-            elapsed_url_time = time.time() - start_url_time
-            if elapsed_url_time > max_url_time:
-                self.logger.warning(f"Timeout alcanzado en URL {url_number}")
-                break
-            
+        for i, enlace in enumerate(tqdm(enlaces_a_procesar, desc=f"URL {url_number}"), 1):
             if enlace in self.processed_urls:
                 continue
             
             try:
-                # NAVEGACION ULTRA RAPIDA
+                # Navegar al anuncio
                 self.driver.get(enlace)
-                time.sleep(0.5)  # MINIMO DELAY
+                time.sleep(1)
                 
-                # EXTRACCION ULTRA RAPIDA
-                moto_data = self._extract_anuncio_data_ultra_fast(enlace)
+                # Extraer datos CORREGIDOS
+                moto_data = self._extract_anuncio_data_corrected(enlace)
+                self.debug_counters['anuncios_procesados'] += 1
                 
-                if moto_data and self.validate_moto_data(moto_data):
-                    self.results.append(moto_data)
-                    self.processed_urls.add(enlace)
-                    anuncios_procesados += 1
-                    self.total_processed += 1
+                if moto_data:
+                    self.debug_counters['datos_extraidos'] += 1
                     
-                    # CONTEO PARA MONITORING
-                    if moto_data.get('Precio') != "No especificado":
-                        precios_ok += 1
-                    if moto_data.get('Kilometraje') != "No especificado":
-                        km_ok += 1
-                    if moto_data.get('Titulo') != "Sin titulo":
-                        titles_ok += 1
+                    # DEBUG: Mostrar datos extraídos para los primeros 3
+                    if self.debug_counters['datos_extraidos'] <= 3:
+                        self.logger.info(f"[DATOS {self.debug_counters['datos_extraidos']}] Extraídos:")
+                        self.logger.info(f"  Titulo: '{moto_data.get('Titulo', 'N/A')}'")
+                        self.logger.info(f"  Precio: '{moto_data.get('Precio', 'N/A')}'")
+                        self.logger.info(f"  Kilometraje: '{moto_data.get('Kilometraje', 'N/A')}'")
+                        self.logger.info(f"  Año: '{moto_data.get('Año', 'N/A')}'")
                     
-                    # MOSTRAR EJEMPLOS DE LOS PRIMEROS 3 ANUNCIOS
-                    if self.examples_shown < 3:
-                        titulo = moto_data.get('Titulo', 'N/A')[:30]
-                        precio = moto_data.get('Precio', 'N/A')
-                        km = moto_data.get('Kilometraje', 'N/A')
-                        año = moto_data.get('Año', 'N/A')
-                        self.logger.info(f"[EJEMPLO {self.examples_shown + 1}] {titulo}... | {precio} | {km} | {año}")
-                        self.examples_shown += 1
-                
-                # SIN DELAY entre anuncios para maxima velocidad
+                    if self.validate_moto_data(moto_data):
+                        self.results.append(moto_data)
+                        self.processed_urls.add(enlace)
+                        anuncios_procesados += 1
+                        self.debug_counters['validaciones_exitosas'] += 1
+                else:
+                    self.debug_counters['errores_extraccion'] += 1
                 
             except Exception as e:
-                self.failed_extractions += 1
+                self.debug_counters['errores_extraccion'] += 1
                 continue
-        
-        # RESUMEN POR URL
-        if anuncios_procesados > 0:
-            precio_pct = (precios_ok / anuncios_procesados * 100) if anuncios_procesados > 0 else 0
-            km_pct = (km_ok / anuncios_procesados * 100) if anuncios_procesados > 0 else 0
-            titles_pct = (titles_ok / anuncios_procesados * 100) if anuncios_procesados > 0 else 0
-            
-            self.logger.info(f"[URL {url_number}] RESUMEN: {anuncios_procesados} motos procesadas")
-            self.logger.info(f"[URL {url_number}] CALIDAD: Titulos {titles_pct:.1f}% | Precios {precio_pct:.1f}% | KM {km_pct:.1f}%")
         
         return anuncios_procesados
     
-    def _extract_anuncio_data_ultra_fast(self, url: str) -> Optional[Dict]:
-        """ULTRA RAPIDO: Extraccion de datos optimizada"""
+    def _extract_anuncio_data_corrected(self, url: str) -> Optional[Dict]:
+        """CORREGIDO: Extracción de datos con nombres consistentes"""
         try:
-            # EXTRACCION RAPIDA CON TIMEOUT MINIMO
+            # USAR NOMBRES CONSISTENTES (sin tildes)
             data = {
                 'URL': url,
-                'Titulo': self._extract_titulo_fast(),           
-                'Precio': self._extract_precio_fast(),          
-                'Kilometraje': self._extract_kilometraje_fast(), 
-                'Año': self._extract_año_fast(),                 
-                'Vendedor': self._extract_vendedor_fast(),       
-                'Ubicacion': self._extract_ubicacion_fast(),     
-                'Fecha_Publicacion': self._extract_fecha_publicacion_fast(),
+                'Titulo': self._extract_titulo_corrected(),           # SIN TILDE
+                'Precio': self._extract_precio_corrected(),          
+                'Kilometraje': self._extract_kilometraje_corrected(), 
+                'Año': self._extract_año_corrected(),                 
+                'Vendedor': self._extract_vendedor_corrected(),       
+                'Ubicacion': self._extract_ubicacion_corrected(),     
+                'Fecha_Publicacion': self._extract_fecha_publicacion_corrected(),
                 'Fecha_Extraccion': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             }
             
             return data
             
         except Exception as e:
+            self.logger.debug(f"Error extrayendo datos de {url}: {e}")
             return None
     
-    def _extract_titulo_fast(self) -> str:
-        """ULTRA RAPIDO: Titulo con timeout minimo"""
+    def _extract_titulo_corrected(self) -> str:
+        """CORREGIDO: Extractor de título mejorado"""
         try:
-            # SELECTORES ULTRA RAPIDOS
-            selectors = ['h1', '*[class*="title"] h1', '*[class*="Title"] h1']
+            # Esperar a que cargue el título
+            try:
+                WebDriverWait(self.driver, 5).until(
+                    EC.presence_of_element_located((By.TAG_NAME, "h1"))
+                )
+            except:
+                pass
+            
+            # Selectores para título
+            selectors = [
+                'h1[data-testid="item-title"]',
+                'h1.item-detail_title',
+                'h1[class*="title"]',
+                'h1[class*="Title"]',
+                'h1',
+                '*[class*="title"] h1',
+                '*[class*="Title"] h1'
+            ]
             
             for selector in selectors:
                 try:
                     element = self.driver.find_element(By.CSS_SELECTOR, selector)
                     if element and element.text.strip():
                         title = element.text.strip()
-                        if len(title) > 3:
+                        if len(title) > 5:
                             return title
                 except:
                     continue
             
             return "Sin titulo"
             
-        except:
+        except Exception as e:
             return "Sin titulo"
     
-    def _extract_precio_fast(self) -> str:
-        """ULTRA RAPIDO: Precio con selectores del scraper MOTICK exitoso"""
+    def _extract_precio_corrected(self) -> str:
+        """CORREGIDO: Extractor de precio mejorado"""
         try:
-            # SELECTORES EXITOSOS del scraper MOTICK
+            # Esperar a que carguen los precios
+            try:
+                WebDriverWait(self.driver, 3).until(
+                    EC.presence_of_element_located((By.XPATH, "//*[contains(text(), '€')]"))
+                )
+            except:
+                pass
+            
+            # Selectores específicos para precios
             price_selectors = [
                 "span.item-detail-price_ItemDetailPrice--standardFinanced__f9ceG",
-                ".item-detail-price_ItemDetailPrice--standardFinanced__f9ceG", 
-                "span.item-detail-price_ItemDetailPrice--standard__fMa16",
                 "*[class*='ItemDetailPrice']",
                 "*[class*='item-price']",
                 "*[class*='price'] span"
@@ -491,19 +476,19 @@ class BaseScraper(ABC):
                     for element in elements:
                         text = element.text.strip()
                         if text and '€' in text:
-                            price = self._extract_price_from_text_fast(text)
+                            price = self._extract_price_from_text(text)
                             if price != "No especificado":
                                 return price
                 except:
                     continue
             
-            # BUSQUEDA RAPIDA DE PRECIOS
+            # Búsqueda general de precios
             try:
                 price_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), '€')]")
-                for elem in price_elements[:3]:  # SOLO PRIMEROS 3
+                for elem in price_elements[:5]:
                     text = elem.text.strip()
-                    if text and len(text) < 20:
-                        price = self._extract_price_from_text_fast(text)
+                    if text and 5 <= len(text) <= 20:
+                        price = self._extract_price_from_text(text)
                         if price != "No especificado":
                             return price
             except:
@@ -511,20 +496,21 @@ class BaseScraper(ABC):
             
             return "No especificado"
             
-        except:
+        except Exception as e:
             return "No especificado"
     
-    def _extract_price_from_text_fast(self, text: str) -> str:
-        """ULTRA RAPIDO: Extraer precio - del scraper MOTICK exitoso"""
+    def _extract_price_from_text(self, text: str) -> str:
+        """Extraer precio de texto"""
         if not text:
             return "No especificado"
         
         clean_text = text.replace('&nbsp;', ' ').replace('\xa0', ' ').strip()
         
-        # REGEX ULTRA RAPIDOS
+        # Patrones de precio
         price_patterns = [
-            r'(\d{1,3}(?:\.\d{3})+)\s*€',
-            r'(\d{4,6})\s*€'
+            r'(\d{1,3}(?:\.\d{3})+)\s*€',  # 7.690 €
+            r'(\d{4,6})\s*€',              # 7690 €
+            r'(\d{1,2}\.\d{3})\s*€'        # 7.690 €
         ]
         
         for pattern in price_patterns:
@@ -540,70 +526,131 @@ class BaseScraper(ABC):
         
         return "No especificado"
     
-    def _extract_kilometraje_fast(self) -> str:
-        """ULTRA RAPIDO: Kilometraje con busqueda rapida"""
+    def _extract_kilometraje_corrected(self) -> str:
+        """CORREGIDO: Extractor de kilometraje mejorado"""
         try:
-            # BUSQUEDA RAPIDA EN DESCRIPCION
-            try:
-                desc_element = self.driver.find_element(By.CSS_SELECTOR, "[class*='description']")
-                desc_text = desc_element.text.lower()
-                
-                # REGEX ULTRA RAPIDO
-                km_match = re.search(r'kilómetros:\s*(\d{1,3}(?:\.\d{3})*)', desc_text)
-                if km_match:
-                    km_value = int(km_match.group(1).replace('.', ''))
-                    if 0 <= km_value <= 999999:
-                        return f"{km_value:,} km".replace(',', '.')
-            except:
-                pass
+            # Buscar en el contenido de la página
+            page_source = self.driver.page_source.lower()
+            
+            # Patrones de kilometraje
+            km_patterns = [
+                r'kilómetros[:\s]*(\d{1,3}\.?\d{0,3})',
+                r'(\d{1,3}\.?\d{0,3})\s*km\b',
+                r'(\d{1,3}\.?\d{0,3})\s*kilómetros?\b'
+            ]
+            
+            for pattern in km_patterns:
+                matches = re.finditer(pattern, page_source)
+                for match in matches:
+                    try:
+                        km_str = match.group(1).replace('.', '')
+                        km_value = int(km_str)
+                        if 0 <= km_value <= 500000:
+                            if km_value == 0:
+                                return "0 km"
+                            elif km_value < 1000:
+                                return f"{km_value} km"
+                            else:
+                                return f"{km_value:,} km".replace(',', '.')
+                    except:
+                        continue
             
             return "No especificado"
             
-        except:
+        except Exception as e:
             return "No especificado"
     
-    def _extract_año_fast(self) -> str:
-        """ULTRA RAPIDO: Año con busqueda rapida"""
+    def _extract_año_corrected(self) -> str:
+        """CORREGIDO: Extractor de año mejorado"""
         try:
-            # BUSQUEDA EN TITULO
-            titulo = self._extract_titulo_fast()
-            year_match = re.search(r'\b(20[1-2][0-9])\b', titulo)
-            if year_match:
-                year = int(year_match.group(1))
-                if 2010 <= year <= 2025:
-                    return str(year)
+            # Obtener título y buscar año en él
+            titulo = self._extract_titulo_corrected()
+            combined_text = f"{titulo} {self.driver.page_source}"
+            
+            # Patrones de año
+            year_patterns = [
+                r'\b(20[1-2][0-9])\b(?!\s*(?:€|euros|km|cc|cv))',
+                r'año[:\s]*(20[1-2][0-9])',
+                r'modelo[:\s]*(20[1-2][0-9])'
+            ]
+            
+            # Buscar primero en título
+            for pattern in year_patterns:
+                match = re.search(pattern, titulo.lower())
+                if match:
+                    year = int(match.group(1))
+                    if 2010 <= year <= 2025:
+                        return str(year)
             
             return "No especificado"
             
-        except:
+        except Exception as e:
             return "No especificado"
     
-    def _extract_vendedor_fast(self) -> str:
-        """ULTRA RAPIDO: Vendedor basico"""
+    def _extract_vendedor_corrected(self) -> str:
+        """CORREGIDO: Extractor de vendedor mejorado"""
         try:
-            # BUSQUEDA RAPIDA
-            selectors = ['h3', '*[class*="user"] h3', '*[class*="seller"] h3']
+            selectors = [
+                'h3[data-testid="seller-name"]',
+                'h3.seller-name',
+                '*[class*="seller"] h3',
+                '*[class*="user"] h3',
+                'h3'
+            ]
             
             for selector in selectors:
                 try:
                     element = self.driver.find_element(By.CSS_SELECTOR, selector)
                     if element and element.text.strip():
-                        vendedor = element.text.strip()
-                        if 'comercial' in vendedor.lower() or 's.l.' in vendedor.lower():
-                            return "Comercial"
-                        return "Particular"
+                        vendedor_text = element.text.strip()
+                        
+                        # Detectar comerciales
+                        commercial_keywords = ['concesionario', 'taller', 'motor', 's.l.', 'comercial']
+                        vendedor_lower = vendedor_text.lower()
+                        
+                        if any(keyword in vendedor_lower for keyword in commercial_keywords):
+                            return f"Comercial: {vendedor_text}"
+                        
+                        return vendedor_text
                 except:
                     continue
             
             return "Particular"
             
-        except:
+        except Exception as e:
             return "Particular"
     
-    def _extract_ubicacion_fast(self) -> str:
-        """ULTRA RAPIDO: Ubicacion basica"""
+    def _extract_ubicacion_corrected(self) -> str:
+        """CORREGIDO: Extractor de ubicación mejorado"""
         try:
-            selectors = ['*[class*="location"]', '*[data-testid*="location"]']
+            selectors = [
+                'a[data-testid="location"]',
+                '*[class*="location"] a',
+                '*[class*="Location"] a'
+            ]
+            
+            for selector in selectors:
+                try:
+                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
+                    if element and element.text.strip():
+                        ubicacion = element.text.strip()
+                        return ubicacion.replace("en ", "").replace("En ", "")
+                except:
+                    continue
+            
+            return "No especificado"
+            
+        except Exception as e:
+            return "No especificado"
+    
+    def _extract_fecha_publicacion_corrected(self) -> str:
+        """CORREGIDO: Extractor de fecha mejorado"""
+        try:
+            selectors = [
+                'span[data-testid="publication-date"]',
+                '*[class*="date"]',
+                '*[class*="time"]'
+            ]
             
             for selector in selectors:
                 try:
@@ -615,56 +662,38 @@ class BaseScraper(ABC):
             
             return "No especificado"
             
-        except:
+        except Exception as e:
             return "No especificado"
     
-    def _extract_fecha_publicacion_fast(self) -> str:
-        """ULTRA RAPIDO: Fecha basica"""
-        return "No especificado"  # SIMPLIFICADO por velocidad
-    
-    def _show_progress_report(self):
-        """Mostrar reporte de progreso detallado"""
-        if self.total_processed > 0:
-            success_rate = (self.successful_extractions / self.total_processed * 100) if self.total_processed > 0 else 0
-            self.logger.info(f"[PROGRESO] {self.total_processed} anuncios procesados | Tasa exito: {success_rate:.1f}%")
-    
-    def _show_final_summary(self):
-        """Mostrar resumen final detallado"""
-        self.logger.info("="*60)
-        self.logger.info("RESUMEN FINAL SCRAPING")
-        self.logger.info("="*60)
-        self.logger.info(f"Total anuncios procesados: {self.total_processed}")
-        self.logger.info(f"Motos validas extraidas: {len(self.results)}")
-        self.logger.info(f"URLs procesadas unicas: {len(self.processed_urls)}")
+    def _show_debug_summary(self):
+        """Mostrar resumen de debug"""
+        counters = self.debug_counters
         
-        if self.results:
-            df = pd.DataFrame(self.results)
+        self.logger.info("="*60)
+        self.logger.info("RESUMEN DEBUG BASE SCRAPER")
+        self.logger.info("="*60)
+        self.logger.info(f"URLs procesadas: {counters['urls_procesadas']}")
+        self.logger.info(f"Enlaces encontrados: {counters['enlaces_encontrados']}")
+        self.logger.info(f"Anuncios procesados: {counters['anuncios_procesados']}")
+        self.logger.info(f"Datos extraídos: {counters['datos_extraidos']}")
+        self.logger.info(f"Validaciones exitosas: {counters['validaciones_exitosas']}")
+        self.logger.info(f"Errores de extracción: {counters['errores_extraccion']}")
+        
+        if counters['anuncios_procesados'] > 0:
+            exito_extraccion = (counters['datos_extraidos'] / counters['anuncios_procesados']) * 100
+            exito_validacion = (counters['validaciones_exitosas'] / counters['datos_extraidos']) * 100 if counters['datos_extraidos'] > 0 else 0
             
-            # CALCULAR CALIDADES
-            titles_ok = len(df[df['Titulo'] != 'Sin titulo'])
-            prices_ok = len(df[df['Precio'] != 'No especificado'])
-            km_ok = len(df[df['Kilometraje'] != 'No especificado'])
-            
-            total = len(df)
-            self.logger.info(f"CALIDAD EXTRACCION:")
-            self.logger.info(f"  Titulos: {titles_ok}/{total} ({titles_ok/total*100:.1f}%)")
-            self.logger.info(f"  Precios: {prices_ok}/{total} ({prices_ok/total*100:.1f}%)")
-            self.logger.info(f"  Kilometrajes: {km_ok}/{total} ({km_ok/total*100:.1f}%)")
-            
-            # MOSTRAR EJEMPLOS FINALES
-            self.logger.info(f"EJEMPLOS FINALES:")
-            for i, (_, row) in enumerate(df.head(3).iterrows(), 1):
-                titulo = row['Titulo'][:30] if len(row['Titulo']) > 30 else row['Titulo']
-                self.logger.info(f"  {i}. {titulo} | {row['Precio']} | {row['Kilometraje']} | {row['Año']}")
+            self.logger.info(f"Tasa éxito extracción: {exito_extraccion:.1f}%")
+            self.logger.info(f"Tasa éxito validación: {exito_validacion:.1f}%")
         
         self.logger.info("="*60)
     
     @abstractmethod
     def get_search_urls(self) -> List[str]:
-        """Generar URLs de busqueda especificas del modelo"""
+        """Generar URLs de búsqueda específicas del modelo"""
         pass
     
     @abstractmethod
     def validate_moto_data(self, moto_data: Dict) -> bool:
-        """Validar si los datos de la moto corresponden al modelo especifico"""
+        """Validar si los datos de la moto corresponden al modelo específico"""
         pass
