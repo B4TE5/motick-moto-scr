@@ -1,461 +1,246 @@
 """
 ================================================================================
-                    SCRAPER CB125R SIMPLIFICADO Y FUNCIONAL                     
+                          SCRAPER CB125R FUNCIONAL                     
 ================================================================================
 
-Version: SIMPLIFICADA EXTREMA
-Objetivo: CONSEGUIR DATOS REALES, no optimizaciones
+Autor: Carlos Peraza
+Version: FUNCIONAL 
+Fecha: Septiembre 2025
 
-ESTRATEGIA:
-1. Extractores ultra simples que siempre devuelvan algo
-2. Validación mínima que acepte casi todo
-3. Debug extenso para ver qué pasa
-4. Solo las URLs más básicas
+OBJETIVO: Conseguir datos reales de CB125R con la clase correcta para main_runner.py
 
 ================================================================================
 """
 
 import re
-import time
 import logging
-import pandas as pd
-from datetime import datetime
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
 from typing import Dict, List, Optional
-from tqdm import tqdm
+from scrapers.base_scraper import BaseScraper
 
-# Imports del sistema
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import get_modelo_config, is_github_actions
-
-class ScraperCB125RSimplificado:
-    """Scraper CB125R ULTRA SIMPLIFICADO para conseguir datos reales"""
+class ScraperCB125R(BaseScraper):
+    """Scraper CB125R con la clase correcta para main_runner.py"""
     
     def __init__(self):
-        self.modelo_key = 'cb125r'
-        self.modelo_config = get_modelo_config('cb125r')
+        super().__init__('cb125r')
         self.logger = logging.getLogger(__name__)
         
-        self.driver = None
-        self.results = []
-        
-        # CONTADORES PARA DEBUG DETALLADO
-        self.debug_stats = {
-            'urls_procesadas': 0,
-            'anuncios_encontrados': 0,
-            'anuncios_visitados': 0,
-            'datos_extraidos_ok': 0,
-            'datos_extraidos_vacios': 0,
-            'validaciones_exitosas': 0,
-            'validaciones_fallidas': 0,
-            'errores_navegacion': 0
+        # Debug stats
+        self.validation_stats = {
+            'total_processed': 0,
+            'empty_title': 0,
+            'no_honda': 0,
+            'no_cb125r': 0,
+            'excluded_model': 0,
+            'invalid_price': 0,
+            'successful': 0
         }
         
-        print(" SCRAPER CB125R ULTRA SIMPLIFICADO INICIADO")
-        print(" Objetivo: Conseguir CUALQUIER dato real de CB125R")
-        print(" Debug: Logging extenso activado")
+        self.logger.info(f"Scraper CB125R inicializado - Debug activado")
     
-    def setup_driver(self):
-        """Setup básico del driver"""
-        options = Options()
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
-        options.add_argument("--disable-extensions")
-        
-        if is_github_actions():
-            options.add_argument("--headless")
-        
-        # Suprimir logs
-        options.add_argument("--log-level=3")
-        options.add_experimental_option("excludeSwitches", ["enable-automation", "enable-logging"])
-        
-        try:
-            driver = webdriver.Chrome(options=options)
-            driver.implicitly_wait(2)
-            driver.set_page_load_timeout(30)
-            
-            print(" Driver configurado correctamente")
-            return driver
-        except Exception as e:
-            print(f" Error configurando driver: {e}")
-            raise
-    
-    def get_basic_urls(self) -> List[str]:
-        """URLs ultra básicas - solo las más simples"""
+    def get_search_urls(self) -> List[str]:
+        """URLs optimizadas para CB125R"""
         min_price = self.modelo_config['precio_min']
         max_price = self.modelo_config['precio_max']
         
-        # SOLO LAS URLs MÁS BÁSICAS
+        # URLs básicas pero efectivas
         urls = [
             f"https://es.wallapop.com/app/search?keywords=honda%20cb125r&min_sale_price={min_price}&max_sale_price={max_price}",
             f"https://es.wallapop.com/app/search?keywords=cb125r&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb%20125%20r&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb125r&min_sale_price={min_price}&max_sale_price={max_price}&order_by=newest",
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb125r&min_sale_price={min_price}&max_sale_price={max_price}&order_by=price_low_to_high",
             "https://es.wallapop.com/app/search?keywords=honda%20cb125r",
             "https://es.wallapop.com/app/search?keywords=cb125r",
-            f"https://es.wallapop.com/app/search?keywords=honda%20cb%20125%20r&min_sale_price={min_price}&max_sale_price={max_price}"
+            f"https://es.wallapop.com/app/search?keywords=moto%20honda%20cb125r&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb125r%202020&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb125r%202021&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb125r%202022&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=honda%20deportiva%20125&min_sale_price={min_price}&max_sale_price={max_price}",
         ]
         
-        print(f" {len(urls)} URLs básicas generadas")
+        self.logger.info(f"Generadas {len(urls)} URLs para CB125R")
         return urls
     
-    def scrape_basic(self) -> pd.DataFrame:
-        """Scraping básico sin optimizaciones"""
-        try:
-            print("\n INICIANDO SCRAPING BÁSICO")
-            
-            # Setup driver
-            self.driver = self.setup_driver()
-            
-            # URLs básicas
-            urls = self.get_basic_urls()
-            
-            for i, url in enumerate(urls, 1):
-                print(f"\n [{i}/{len(urls)}] Procesando: {url[:60]}...")
-                
-                try:
-                    self.process_url_basic(url, i)
-                    self.debug_stats['urls_procesadas'] += 1
-                    time.sleep(2)  # Pausa entre URLs
-                except Exception as e:
-                    print(f"  Error en URL {i}: {e}")
-                    continue
-            
-            # Resultado final
-            if self.results:
-                df = pd.DataFrame(self.results)
-                print(f"\n SCRAPING COMPLETADO: {len(df)} motos encontradas")
-                self.show_debug_stats()
-                self.show_sample_results(df)
-                return df
-            else:
-                print(f"\n NO SE ENCONTRARON RESULTADOS")
-                self.show_debug_stats()
-                return pd.DataFrame()
-                
-        except Exception as e:
-            print(f" Error crítico: {e}")
-            return pd.DataFrame()
-        finally:
-            if self.driver:
-                self.driver.quit()
-                print(" Driver cerrado")
-    
-    def process_url_basic(self, url: str, url_num: int):
-        """Procesar una URL de forma básica"""
-        try:
-            # Navegar
-            self.driver.get(url)
-            time.sleep(3)
-            
-            # Aceptar cookies si aparece
-            try:
-                cookie_btn = WebDriverWait(self.driver, 2).until(
-                    EC.element_to_be_clickable((By.ID, "onetrust-accept-btn-handler"))
-                )
-                cookie_btn.click()
-                time.sleep(1)
-            except:
-                pass
-            
-            # Scroll básico
-            for i in range(3):
-                self.driver.execute_script("window.scrollBy(0, 1000);")
-                time.sleep(0.5)
-            
-            # Obtener enlaces
-            enlaces = self.get_enlaces_basic()
-            self.debug_stats['anuncios_encontrados'] += len(enlaces)
-            
-            print(f" {len(enlaces)} enlaces encontrados en URL {url_num}")
-            
-            if not enlaces:
-                print(f"  No se encontraron enlaces en URL {url_num}")
-                return
-            
-            # Procesar anuncios (solo los primeros 10 para testing)
-            max_anuncios = 10
-            enlaces_procesar = enlaces[:max_anuncios]
-            
-            print(f" Procesando {len(enlaces_procesar)} anuncios...")
-            
-            for j, enlace in enumerate(enlaces_procesar, 1):
-                try:
-                    print(f"    [{j}/{len(enlaces_procesar)}] Analizando anuncio...")
-                    
-                    moto_data = self.extract_anuncio_basic(enlace)
-                    self.debug_stats['anuncios_visitados'] += 1
-                    
-                    if moto_data:
-                        self.debug_stats['datos_extraidos_ok'] += 1
-                        
-                        # MOSTRAR DATOS EXTRAÍDOS (debug)
-                        print(f"       Datos extraídos:")
-                        print(f"         Titulo: '{moto_data.get('Titulo', 'N/A')}'")
-                        print(f"         Precio: '{moto_data.get('Precio', 'N/A')}'")
-                        print(f"         Año: '{moto_data.get('Año', 'N/A')}'")
-                        
-                        # Validación ultra simple
-                        if self.validate_basic(moto_data):
-                            self.results.append(moto_data)
-                            self.debug_stats['validaciones_exitosas'] += 1
-                            print(f"       MOTO VÁLIDA AGREGADA!")
-                        else:
-                            self.debug_stats['validaciones_fallidas'] += 1
-                            print(f"       Rechazada en validación")
-                    else:
-                        self.debug_stats['datos_extraidos_vacios'] += 1
-                        print(f"        No se pudieron extraer datos")
-                    
-                    time.sleep(1)  # Pausa entre anuncios
-                    
-                except Exception as e:
-                    self.debug_stats['errores_navegacion'] += 1
-                    print(f"       Error: {e}")
-                    continue
-                    
-        except Exception as e:
-            print(f" Error procesando URL: {e}")
-    
-    def get_enlaces_basic(self) -> List[str]:
-        """Obtener enlaces de forma básica"""
-        enlaces = []
+    def validate_moto_data(self, moto_data: Dict) -> bool:
+        """Validación mejorada con debug extenso"""
+        self.validation_stats['total_processed'] += 1
         
         try:
-            # Selector ultra simple
-            elements = self.driver.find_elements(By.CSS_SELECTOR, 'a[href*="/item/"]')
-            
-            for element in elements:
-                href = element.get_attribute('href')
-                if href and '/item/' in href:
-                    enlaces.append(href)
-            
-            return list(set(enlaces))  # Eliminar duplicados
-            
-        except Exception as e:
-            print(f"Error obteniendo enlaces: {e}")
-            return []
-    
-    def extract_anuncio_basic(self, url: str) -> Optional[Dict]:
-        """Extracción ULTRA BÁSICA de datos"""
-        try:
-            # Navegar al anuncio
-            self.driver.get(url)
-            time.sleep(2)
-            
-            # Extraer datos básicos
-            data = {
-                'URL': url,
-                'Titulo': self.extract_titulo_ultra_simple(),
-                'Precio': self.extract_precio_ultra_simple(),
-                'Año': self.extract_año_ultra_simple(),
-                'Kilometraje': self.extract_km_ultra_simple(),
-                'Vendedor': "Particular",  # Por defecto
-                'Ubicacion': "No especificado",  # Simplificado
-                'Fecha_Publicacion': "No especificado",  # Simplificado
-                'Fecha_Extraccion': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            }
-            
-            return data
-            
-        except Exception as e:
-            print(f"Error extrayendo datos: {e}")
-            return None
-    
-    def extract_titulo_ultra_simple(self) -> str:
-        """Extractor de título ULTRA SIMPLE"""
-        try:
-            # Buscar cualquier H1
-            h1_elements = self.driver.find_elements(By.TAG_NAME, "h1")
-            for h1 in h1_elements:
-                text = h1.text.strip()
-                if text and len(text) > 5:
-                    return text
-            
-            return "Sin titulo"
-        except:
-            return "Sin titulo"
-    
-    def extract_precio_ultra_simple(self) -> str:
-        """Extractor de precio ULTRA SIMPLE"""
-        try:
-            # Buscar cualquier elemento con €
-            elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), '€')]")
-            
-            for element in elements[:5]:  # Solo los primeros 5
-                text = element.text.strip()
-                if text and '€' in text and len(text) < 20:
-                    # Extraer números
-                    numbers = re.findall(r'\d+', text.replace('.', '').replace(',', ''))
-                    if numbers:
-                        try:
-                            price = int(numbers[0])
-                            if 100 <= price <= 50000:
-                                return f"{price} €"
-                        except:
-                            continue
-            
-            return "No especificado"
-        except:
-            return "No especificado"
-    
-    def extract_año_ultra_simple(self) -> str:
-        """Extractor de año ULTRA SIMPLE"""
-        try:
-            # Buscar año en el título
-            titulo = self.extract_titulo_ultra_simple()
-            years = re.findall(r'\b(20[1-2][0-9])\b', titulo)
-            
-            for year in years:
-                year_int = int(year)
-                if 2015 <= year_int <= 2025:
-                    return year
-            
-            return "No especificado"
-        except:
-            return "No especificado"
-    
-    def extract_km_ultra_simple(self) -> str:
-        """Extractor de km ULTRA SIMPLE"""
-        try:
-            # Buscar en el source de la página
-            page_source = self.driver.page_source.lower()
-            
-            # Patrones simples
-            km_matches = re.findall(r'(\d{1,6})\s*km', page_source)
-            
-            for km_str in km_matches:
-                try:
-                    km = int(km_str)
-                    if 0 <= km <= 200000:
-                        return f"{km} km"
-                except:
-                    continue
-            
-            return "No especificado"
-        except:
-            return "No especificado"
-    
-    def validate_basic(self, moto_data: Dict) -> bool:
-        """Validación ULTRA BÁSICA - acepta casi todo"""
-        try:
-            titulo = moto_data.get('Titulo', '').lower()
+            titulo = moto_data.get('Titulo', '').lower().strip()
             precio = moto_data.get('Precio', '')
             
-            # CRITERIO MÍNIMO: título no vacío
+            # DEBUG: Log datos para los primeros 5
+            if self.validation_stats['total_processed'] <= 5:
+                self.logger.info(f"[VALIDACION {self.validation_stats['total_processed']}]")
+                self.logger.info(f"  Titulo: '{titulo}'")
+                self.logger.info(f"  Precio: '{precio}'")
+            
+            # 1. Verificar título no vacío
             if not titulo or titulo == "sin titulo":
-                print(f"          Título vacío")
+                self.validation_stats['empty_title'] += 1
+                if self.validation_stats['total_processed'] <= 5:
+                    self.logger.info(f"   Rechazado: título vacío")
                 return False
             
-            # CRITERIO MÍNIMO: debe tener alguna palabra relacionada con motos o Honda
-            keywords_motos = ['honda', 'moto', 'cb', '125', 'r']
-            tiene_keyword = any(keyword in titulo for keyword in keywords_motos)
+            # 2. Verificar Honda (más flexible)
+            honda_keywords = ['honda', 'hond']
+            honda_found = any(keyword in titulo for keyword in honda_keywords)
             
-            if not tiene_keyword:
-                print(f"          No parece ser una moto Honda")
+            # 3. Verificar CB125R (muy flexible)
+            cb125r_patterns = [
+                'cb125r', 'cb 125 r', 'cb-125-r', 'cb 125r', 'cb125 r',
+                'cb125', 'cb 125', 'honda 125'
+            ]
+            cb125r_found = any(pattern in titulo for pattern in cb125r_patterns)
+            
+            # 4. Excluir modelos claramente diferentes
+            excluded_models = ['cb125f', 'cb250r', 'cb500r', 'cbr125', 'cbr']
+            excluded = any(model in titulo for model in excluded_models)
+            
+            if excluded:
+                self.validation_stats['excluded_model'] += 1
+                if self.validation_stats['total_processed'] <= 5:
+                    self.logger.info(f"   Rechazado: modelo excluido")
                 return False
             
-            # CRITERIO OPCIONAL: precio válido (no obligatorio)
-            if precio != "No especificado":
-                try:
-                    price_numbers = re.findall(r'\d+', precio)
-                    if price_numbers:
-                        price = int(price_numbers[0])
-                        if price < 500 or price > 15000:
-                            print(f"         ⚠  Precio fuera de rango pero acepto: {precio}")
-                except:
-                    pass
+            # LÓGICA DE ACEPTACIÓN MÁS FLEXIBLE:
             
-            print(f"          Validación básica OK")
-            return True
+            # Caso 1: Honda + CB125R específico
+            if honda_found and cb125r_found:
+                self.validation_stats['successful'] += 1
+                if self.validation_stats['total_processed'] <= 5:
+                    self.logger.info(f"   Aceptado: Honda + CB125R")
+                return True
+            
+            # Caso 2: Solo CB125R (sin Honda explícita pero patrón claro)
+            if any(p in titulo for p in ['cb125r', 'cb 125 r']):
+                self.validation_stats['successful'] += 1
+                if self.validation_stats['total_processed'] <= 5:
+                    self.logger.info(f"   Aceptado: CB125R específico")
+                return True
+            
+            # Caso 3: Honda + precio en rango CB125R
+            if honda_found and self._is_cb125r_price_range(precio):
+                # Buscar indicios de 125cc
+                if any(p in titulo for p in ['125', 'deportiva']):
+                    self.validation_stats['successful'] += 1
+                    if self.validation_stats['total_processed'] <= 5:
+                        self.logger.info(f"   Aceptado: Honda + precio + 125")
+                    return True
+            
+            # Si no cumple criterios
+            if not honda_found:
+                self.validation_stats['no_honda'] += 1
+            elif not cb125r_found:
+                self.validation_stats['no_cb125r'] += 1
+            
+            if self.validation_stats['total_processed'] <= 5:
+                self.logger.info(f"   Rechazado: no cumple criterios")
+            
+            return False
             
         except Exception as e:
-            print(f"         Error en validación: {e}")
+            self.logger.error(f"Error en validación: {e}")
             return False
     
-    def show_debug_stats(self):
-        """Mostrar estadísticas de debug"""
-        stats = self.debug_stats
+    def _is_cb125r_price_range(self, precio_text: str) -> bool:
+        """Verificar si está en rango de precio CB125R"""
+        if not precio_text or precio_text == "No especificado":
+            return False
         
-        print("\n" + "="*60)
-        print(" ESTADÍSTICAS DE DEBUG")
-        print("="*60)
-        print(f"URLs procesadas: {stats['urls_procesadas']}")
-        print(f"Anuncios encontrados: {stats['anuncios_encontrados']}")
-        print(f"Anuncios visitados: {stats['anuncios_visitados']}")
-        print(f"Datos extraídos OK: {stats['datos_extraidos_ok']}")
-        print(f"Datos extraídos vacíos: {stats['datos_extraidos_vacios']}")
-        print(f"Validaciones exitosas: {stats['validaciones_exitosas']}")
-        print(f"Validaciones fallidas: {stats['validaciones_fallidas']}")
-        print(f"Errores de navegación: {stats['errores_navegacion']}")
+        try:
+            numbers = re.findall(r'\d+', precio_text.replace('.', '').replace(',', ''))
+            if numbers:
+                price = int(numbers[0])
+                min_price = self.modelo_config['precio_min']
+                max_price = self.modelo_config['precio_max']
+                return min_price <= price <= max_price
+        except:
+            pass
         
-        # Análisis
-        if stats['anuncios_encontrados'] > 0:
-            tasa_visita = (stats['anuncios_visitados'] / stats['anuncios_encontrados']) * 100
-            print(f"\nTasa de visita: {tasa_visita:.1f}%")
-        
-        if stats['anuncios_visitados'] > 0:
-            tasa_extraccion = (stats['datos_extraidos_ok'] / stats['anuncios_visitados']) * 100
-            print(f"Tasa de extracción: {tasa_extraccion:.1f}%")
-        
-        if stats['datos_extraidos_ok'] > 0:
-            tasa_validacion = (stats['validaciones_exitosas'] / stats['datos_extraidos_ok']) * 100
-            print(f"Tasa de validación: {tasa_validacion:.1f}%")
-        
-        print("="*60)
+        return False
     
-    def show_sample_results(self, df: pd.DataFrame):
-        """Mostrar muestra de resultados"""
-        if not df.empty:
-            print("\n MUESTRA DE RESULTADOS:")
-            for i, (_, row) in enumerate(df.head(5).iterrows(), 1):
-                print(f"{i}. {row['Titulo'][:50]}...")
-                print(f"   Precio: {row['Precio']} | Año: {row['Año']} | KM: {row['Kilometraje']}")
-                print(f"   URL: {row['URL'][:60]}...")
-                print()
+    def scrape_model(self):
+        """Override para mostrar stats al final"""
+        try:
+            result = super().scrape_model()
+            self._show_validation_summary()
+            return result
+        except Exception as e:
+            self.logger.error(f"Error en scrape_model: {e}")
+            self._show_validation_summary()
+            raise
+    
+    def _show_validation_summary(self):
+        """Mostrar resumen de validación"""
+        stats = self.validation_stats
+        total = stats['total_processed']
+        
+        if total > 0:
+            self.logger.info("="*60)
+            self.logger.info("RESUMEN DE VALIDACIÓN CB125R")
+            self.logger.info("="*60)
+            self.logger.info(f"Total procesados: {total}")
+            self.logger.info(f"Exitosos: {stats['successful']} ({stats['successful']/total*100:.1f}%)")
+            self.logger.info("RECHAZOS:")
+            self.logger.info(f"  Título vacío: {stats['empty_title']} ({stats['empty_title']/total*100:.1f}%)")
+            self.logger.info(f"  Sin Honda: {stats['no_honda']} ({stats['no_honda']/total*100:.1f}%)")
+            self.logger.info(f"  Sin CB125R: {stats['no_cb125r']} ({stats['no_cb125r']/total*100:.1f}%)")
+            self.logger.info(f"  Modelo excluido: {stats['excluded_model']} ({stats['excluded_model']/total*100:.1f}%)")
+            self.logger.info("="*60)
+            
+            # Diagnóstico
+            if stats['successful'] == 0:
+                self.logger.warning(" NINGUNA VALIDACIÓN EXITOSA")
+                if stats['empty_title'] > total * 0.5:
+                    self.logger.warning("   - PROBLEMA: Extractor de títulos fallando")
+                elif stats['no_honda'] > total * 0.5:
+                    self.logger.warning("   - PROBLEMA: Los anuncios no son de Honda")
+                elif stats['no_cb125r'] > total * 0.5:
+                    self.logger.warning("   - PROBLEMA: Los anuncios no son CB125R")
 
 
-def run_cb125r_simplificado():
-    """Función principal simplificada"""
-    print("="*80)
-    print("    SCRAPER CB125R ULTRA SIMPLIFICADO")
-    print("="*80)
-    print(" OBJETIVO: Conseguir CUALQUIER dato real de CB125R")
-    print(" ESTRATEGIA: Máxima simplicidad, mínima optimización")
-    print(" DEBUG: Logging detallado de cada paso")
-    print("="*80)
-    
+# Función principal
+def run_cb125r_scraper():
+    """Función principal para ejecutar el scraper de CB125R"""
     try:
-        scraper = ScraperCB125RSimplificado()
-        df_results = scraper.scrape_basic()
+        print("="*80)
+        print("    SCRAPER CB125R - VERSION FUNCIONAL")
+        print("="*80)
+        print(" Objetivo: Conseguir datos reales de CB125R")
+        print(" Validación flexible + debug extenso")
+        print()
+        
+        scraper = ScraperCB125R()
+        df_results = scraper.scrape_model()
         
         if not df_results.empty:
-            print(f"\n ÉXITO: {len(df_results)} motos CB125R encontradas")
+            print(f"\n SCRAPING EXITOSO: {len(df_results)} motos encontradas")
+            
+            # Mostrar muestra
+            print(f"\n MUESTRA DE RESULTADOS:")
+            for i, (_, moto) in enumerate(df_results.head(5).iterrows(), 1):
+                titulo = moto['Titulo'][:40] if len(moto['Titulo']) > 40 else moto['Titulo']
+                print(f"   {i}. {titulo} | {moto['Precio']} | {moto['Kilometraje']} | {moto['Año']}")
+            
             return df_results
         else:
-            print(f"\n ANÁLISIS NECESARIO: Ver estadísticas arriba")
+            print("\n NO SE ENCONTRARON MOTOS CB125R")
+            print(" Revisar logs de validación arriba")
             return df_results
             
     except Exception as e:
-        print(f"\n ERROR CRÍTICO: {e}")
+        print(f"\n ERROR: {e}")
         return None
 
 if __name__ == "__main__":
-    results = run_cb125r_simplificado()
+    # Ejecutar scraper directamente
+    import sys
+    import os
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     
+    results = run_cb125r_scraper()
     if results is not None and not results.empty:
-        print(f"\n RESULTADO FINAL: {len(results)} motos extraídas exitosamente")
-        
-        # Guardar resultados
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"cb125r_simplificado_{timestamp}.xlsx"
-        results.to_excel(filename, index=False)
-        print(f" Resultados guardados en: {filename}")
+        print(f"\n ÉXITO: {len(results)} motos CB125R extraídas")
     else:
-        print(f"\n ANÁLISIS: Revisar estadísticas de debug arriba")
-        print(" SIGUIENTE PASO: Identificar dónde está fallando el proceso")
+        print(f"\n REVISAR: Logs de debug para identificar problema")
