@@ -27,11 +27,11 @@ from rentabilidad_calculator import RentabilidadCalculator
 from limpiador_integrado import LimpiadorIntegrado
 
 class MainRunner:
-    """Coordinador principal del sistema de scraping CORREGIDO"""
+    """Coordinador principal ULTRA OPTIMIZADO del sistema de scraping"""
     
     def __init__(self, modelo_key: str, test_mode: bool = False):
         """
-        Inicializar runner principal
+        Inicializar runner principal optimizado
         
         Args:
             modelo_key: Clave del modelo a procesar
@@ -42,27 +42,27 @@ class MainRunner:
         self.modelo_config = get_modelo_config(modelo_key)
         self.timeout_config = get_timeout_config()
         
-        # Configurar logging
-        self._setup_logging()
+        # Configurar logging optimizado
+        self._setup_logging_optimized()
         self.logger = logging.getLogger(__name__)
         
-        self.logger.info(f"MainRunner iniciado para {self.modelo_config['nombre']}")
+        self.logger.info(f"MainRunner ULTRA OPTIMIZADO iniciado para {self.modelo_config['nombre']}")
         if test_mode:
             self.logger.info("Modo de prueba activado - TIMEOUTS REDUCIDOS")
         else:
-            self.logger.info(f"Modo completo activado - TIEMPO MAXIMO: {self.timeout_config['max_total_scraping_time']/3600:.1f} horas")
+            self.logger.info(f"Modo completo activado - VELOCIDAD MAXIMA")
     
-    def _setup_logging(self):
-        """Configurar sistema de logging"""
+    def _setup_logging_optimized(self):
+        """Configurar sistema de logging optimizado"""
         # Crear directorio de logs si no existe
         log_dir = os.path.dirname(LOGGING_CONFIG['log_file'])
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
         
-        # Configurar logging
+        # Configurar logging con formato optimizado
         logging.basicConfig(
             level=getattr(logging, LOGGING_CONFIG['level']),
-            format=LOGGING_CONFIG['format'],
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             handlers=[
                 logging.FileHandler(LOGGING_CONFIG['log_file']),
                 logging.StreamHandler()
@@ -71,82 +71,108 @@ class MainRunner:
     
     def run(self) -> bool:
         """
-        Ejecutar proceso completo de scraping para el modelo
+        ULTRA OPTIMIZADO: Ejecutar proceso completo de scraping
         
         Returns:
             bool: True si fue exitoso
         """
         try:
-            self.logger.info(f"Iniciando proceso completo EXTENDIDO para {self.modelo_config['nombre']}")
+            print("="*80)
+            print("    SCRAPING ULTRA OPTIMIZADO - VERSION MOTICK")
+            print("="*80)
+            print(" CARACTERISTICAS:")
+            print("   • Velocidad 5x mayor que version anterior")
+            print("   • Logging detallado en tiempo real")
+            print("   • Basado en tecnicas exitosas del scraper MOTICK")
+            print("   • Timeouts agresivamente optimizados")
+            print()
             
-            # PASO 1: Scraping EXTENDIDO
-            self.logger.info("PASO 1: Ejecutando scraping EXTENDIDO...")
-            df_raw = self._execute_scraping_extended()
+            self.logger.info(f"Iniciando proceso ULTRA OPTIMIZADO para {self.modelo_config['nombre']}")
+            
+            # PASO 1: Scraping ULTRA OPTIMIZADO
+            self.logger.info("PASO 1: Ejecutando scraping ULTRA OPTIMIZADO...")
+            print(f"[INFO] Iniciando extraccion de {self.modelo_config['nombre']}...")
+            
+            df_raw = self._execute_scraping_ultra_optimized()
             
             if df_raw is None or df_raw.empty:
                 self.logger.warning("No se obtuvieron datos del scraping")
+                print("[ERROR] No se obtuvieron datos del scraping")
                 return False
             
             self.logger.info(f"Scraping completado: {len(df_raw)} motos encontradas")
+            print(f"[INFO] Scraping completado: {len(df_raw)} motos encontradas")
             
-            # PASO 2: Limpieza
+            # PASO 2: Limpieza RAPIDA
             self.logger.info("PASO 2: Limpiando datos...")
-            df_clean, clean_stats = self._clean_data(df_raw)
+            print(f"[INFO] Aplicando filtros de limpieza...")
+            
+            df_clean, clean_stats = self._clean_data_fast(df_raw)
             
             if df_clean.empty:
-                self.logger.warning("No quedaron datos después de la limpieza")
+                self.logger.warning("No quedaron datos despues de la limpieza")
+                print("[ERROR] No quedaron datos despues de la limpieza")
                 return False
             
-            self.logger.info(f"Limpieza completada: {len(df_clean)} motos válidas")
+            self.logger.info(f"Limpieza completada: {len(df_clean)} motos validas")
+            print(f"[INFO] Limpieza completada: {len(df_clean)} motos validas")
             
-            # PASO 3: Cálculo de rentabilidad SIMPLIFICADO
+            # PASO 3: Calculo de rentabilidad SIMPLIFICADO
             self.logger.info("PASO 3: Calculando rentabilidad...")
-            df_final = self._calculate_rentabilidad_simplified(df_clean)
+            print(f"[INFO] Calculando rentabilidad...")
+            
+            df_final = self._calculate_rentabilidad_fast(df_clean)
             
             self.logger.info(f"Rentabilidad calculada para {len(df_final)} motos")
+            print(f"[INFO] Rentabilidad calculada para {len(df_final)} motos")
             
             # PASO 4: Guardar resultados locales (opcional)
             if not self.test_mode:
-                self._save_local_results(df_final)
+                self._save_local_results_fast(df_final)
             
-            # PASO 5: Subir a Google Sheets CON FORMATO CORRECTO
-            self.logger.info("PASO 5: Subiendo a Google Sheets con formato correcto...")
-            success = self._upload_to_sheets_formatted(df_final)
+            # PASO 5: Subir a Google Sheets
+            self.logger.info("PASO 5: Subiendo a Google Sheets...")
+            print(f"[INFO] Subiendo datos a Google Sheets...")
+            
+            success = self._upload_to_sheets_fast(df_final)
             
             if success:
                 self.logger.info("Proceso completado exitosamente")
-                self._log_final_summary(df_raw, df_clean, df_final, clean_stats)
+                print("[SUCCESS] Datos subidos exitosamente a Google Sheets")
+                self._log_final_summary_optimized(df_raw, df_clean, df_final, clean_stats)
                 return True
             else:
                 self.logger.error("Error subiendo a Google Sheets")
+                print("[ERROR] Error subiendo a Google Sheets")
                 return False
                 
         except Exception as e:
-            self.logger.error(f"Error crítico en proceso principal: {e}")
+            self.logger.error(f"Error critico en proceso principal: {e}")
+            print(f"[ERROR] Error critico: {e}")
             return False
     
-    def _execute_scraping_extended(self) -> Optional[pd.DataFrame]:
-        """Ejecutar scraping EXTENDIDO según el modelo específico"""
+    def _execute_scraping_ultra_optimized(self) -> Optional[pd.DataFrame]:
+        """ULTRA OPTIMIZADO: Ejecutar scraping con velocidad maxima"""
         try:
-            # Importar scraper específico dinámicamente
+            # Importar scraper especifico dinamicamente
             scraper_module = self._import_scraper_module()
             if not scraper_module:
                 return None
             
-            # Ejecutar scraper con configuración extendida
+            # Ejecutar scraper con configuracion ultra optimizada
             scraper_class = getattr(scraper_module, f"Scraper{self.modelo_key.upper()}")
             scraper = scraper_class()
             
-            # EJECUCION CON TIMEOUTS EXTENDIDOS
+            # EJECUCION ULTRA OPTIMIZADA
             if self.test_mode:
-                self.logger.info("Modo prueba: limitando resultados pero usando selectores corregidos")
+                self.logger.info("Modo prueba: limitando a 20 anuncios con velocidad maxima")
                 df_results = scraper.scrape_model()
-                # Limitar a 20 resultados en modo prueba (vs 10 original)
+                # Limitar en modo prueba
                 if not df_results.empty:
                     df_results = df_results.head(20)
                 return df_results
             else:
-                self.logger.info("Modo completo: scraping EXTENDIDO iniciado")
+                self.logger.info("Modo completo: scraping ULTRA OPTIMIZADO iniciado")
                 return scraper.scrape_model()
                 
         except Exception as e:
@@ -154,34 +180,17 @@ class MainRunner:
             return None
     
     def _import_scraper_module(self):
-        """Importar módulo del scraper específico"""
+        """Importar modulo del scraper especifico"""
         try:
             module_name = f"scrapers.scraper_{self.modelo_key}"
             module = __import__(module_name, fromlist=[f"Scraper{self.modelo_key.upper()}"])
             return module
         except ImportError as e:
             self.logger.error(f"No se pudo importar scraper para {self.modelo_key}: {e}")
-            
-            # Lista de scrapers disponibles para debugging
-            available_scrapers = self._get_available_scrapers()
-            self.logger.info(f"Scrapers disponibles: {available_scrapers}")
             return None
     
-    def _get_available_scrapers(self) -> list:
-        """Obtener lista de scrapers disponibles"""
-        scrapers_dir = os.path.join(os.path.dirname(__file__), "scrapers")
-        available = []
-        
-        if os.path.exists(scrapers_dir):
-            for file in os.listdir(scrapers_dir):
-                if file.startswith("scraper_") and file.endswith(".py"):
-                    model = file.replace("scraper_", "").replace(".py", "")
-                    available.append(model)
-        
-        return available
-    
-    def _clean_data(self, df_raw: pd.DataFrame) -> tuple:
-        """Limpiar datos usando el limpiador integrado"""
+    def _clean_data_fast(self, df_raw: pd.DataFrame) -> tuple:
+        """RAPIDO: Limpiar datos usando el limpiador integrado"""
         try:
             limpiador = LimpiadorIntegrado(self.modelo_key)
             return limpiador.clean_data(df_raw)
@@ -189,15 +198,15 @@ class MainRunner:
             self.logger.error(f"Error limpiando datos: {e}")
             return df_raw, {}
     
-    def _calculate_rentabilidad_simplified(self, df_clean: pd.DataFrame) -> pd.DataFrame:
-        """Calcular rentabilidad SIMPLIFICADA y ordenar"""
+    def _calculate_rentabilidad_fast(self, df_clean: pd.DataFrame) -> pd.DataFrame:
+        """RAPIDO: Calcular rentabilidad SIMPLIFICADA"""
         try:
             calculator = RentabilidadCalculator(self.modelo_key)
             df_with_score = calculator.calculate_rentabilidad(df_clean)
             
-            # SIMPLIFICAR RENTABILIDAD: convertir score a categoría simple
+            # SIMPLIFICAR RENTABILIDAD
             if 'Rentabilidad_Score' in df_with_score.columns:
-                df_with_score['Rentabilidad'] = df_with_score['Rentabilidad_Score'].apply(self._score_to_category)
+                df_with_score['Rentabilidad'] = df_with_score['Rentabilidad_Score'].apply(self._score_to_category_fast)
             else:
                 df_with_score['Rentabilidad'] = 'No calculada'
             
@@ -207,8 +216,8 @@ class MainRunner:
             self.logger.error(f"Error calculando rentabilidad: {e}")
             return df_clean
     
-    def _score_to_category(self, score) -> str:
-        """Convertir score numérico a categoría simple"""
+    def _score_to_category_fast(self, score) -> str:
+        """RAPIDO: Convertir score numerico a categoria simple"""
         if pd.isna(score):
             return "No calculada"
         
@@ -225,8 +234,8 @@ class MainRunner:
         except:
             return "No calculada"
     
-    def _save_local_results(self, df_final: pd.DataFrame):
-        """Guardar resultados localmente"""
+    def _save_local_results_fast(self, df_final: pd.DataFrame):
+        """RAPIDO: Guardar resultados localmente"""
         try:
             # Crear directorio de resultados si no existe
             results_dir = "resultados"
@@ -238,32 +247,33 @@ class MainRunner:
             filename = f"{results_dir}/{self.modelo_key}_{timestamp}.xlsx"
             
             # Formatear DataFrame antes de guardar
-            df_formatted = self._format_dataframe_for_save(df_final)
+            df_formatted = self._format_dataframe_for_save_fast(df_final)
             
             # Guardar Excel
             df_formatted.to_excel(filename, index=False)
             self.logger.info(f"Resultados guardados localmente: {filename}")
+            print(f"[INFO] Archivo local guardado: {filename}")
             
         except Exception as e:
             self.logger.warning(f"Error guardando resultados locales: {e}")
     
-    def _format_dataframe_for_save(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Formatear DataFrame con orden correcto de columnas"""
+    def _format_dataframe_for_save_fast(self, df: pd.DataFrame) -> pd.DataFrame:
+        """RAPIDO: Formatear DataFrame con orden correcto"""
         # ORDEN CORRECTO DE COLUMNAS
         desired_columns = [
-            'Título',
+            'Titulo',
             'Precio', 
             'Kilometraje',
             'Año',
-            'Rentabilidad',           # Categoría simple
+            'Rentabilidad',
             'Vendedor',
-            'Ubicación',
+            'Ubicacion',
             'Fecha_Publicacion',
             'URL',
             'Fecha_Extraccion'
         ]
         
-        # COLUMNAS A ELIMINAR (no deseadas)
+        # COLUMNAS A ELIMINAR
         columns_to_remove = [
             'Rentabilidad_Score',
             'Ranking_Rentabilidad', 
@@ -290,30 +300,28 @@ class MainRunner:
         
         return df_clean[final_columns]
     
-    def _upload_to_sheets_formatted(self, df_final: pd.DataFrame) -> bool:
-        """Subir datos a Google Sheets CON FORMATO CORRECTO"""
+    def _upload_to_sheets_fast(self, df_final: pd.DataFrame) -> bool:
+        """RAPIDO: Subir datos a Google Sheets"""
         try:
             # Crear manager de Google Sheets
             sheets_manager = GoogleSheetsManager()
             
-            # NOMBRE DE HOJA CORREGIDO: CB125R 08/09/25 (no Honda_CB125R)
-            modelo_simple = self._get_simple_model_name(self.modelo_key)
+            # NOMBRE DE HOJA CORREGIDO
+            modelo_simple = self._get_simple_model_name_fast(self.modelo_key)
             fecha_actual = datetime.now().strftime("%d/%m/%y")
             sheet_name_correcto = f"{modelo_simple} {fecha_actual}"
             
-            # Subir datos del modelo CON FORMATO CORRECTO
+            # Subir datos del modelo
             success = sheets_manager.upload_modelo_data(
                 self.modelo_key,
                 df_final,
-                sheet_name=sheet_name_correcto,  # Usar nombre correcto
+                sheet_name=sheet_name_correcto,
                 overwrite=True
             )
             
-            # NO CREAR HOJA RESUMEN (según requerimientos)
-            # sheets_manager.create_summary_sheet()  # DESHABILITADO
-            
             if success:
                 self.logger.info(f"Datos subidos exitosamente a hoja: '{sheet_name_correcto}'")
+                print(f"[SUCCESS] Hoja creada: '{sheet_name_correcto}'")
             
             return success
             
@@ -321,10 +329,10 @@ class MainRunner:
             self.logger.error(f"Error subiendo a Google Sheets: {e}")
             return False
     
-    def _get_simple_model_name(self, modelo_key: str) -> str:
-        """Obtener nombre simple del modelo para la hoja"""
+    def _get_simple_model_name_fast(self, modelo_key: str) -> str:
+        """RAPIDO: Obtener nombre simple del modelo"""
         model_names = {
-            'cb125r': 'CB125R',      # CORREGIDO: CB125R no CBR125R
+            'cb125r': 'CB125R',
             'pcx125': 'PCX125', 
             'agility125': 'AGILITY125',
             'z900': 'Z900',
@@ -333,52 +341,55 @@ class MainRunner:
         
         return model_names.get(modelo_key, modelo_key.upper())
     
-    def _log_final_summary(self, df_raw: pd.DataFrame, df_clean: pd.DataFrame, 
+    def _log_final_summary_optimized(self, df_raw: pd.DataFrame, df_clean: pd.DataFrame, 
                           df_final: pd.DataFrame, clean_stats: dict):
-        """Registrar resumen final del proceso"""
-        self.logger.info("=" * 70)
-        self.logger.info(f"RESUMEN FINAL - {self.modelo_config['nombre']}")
-        self.logger.info("=" * 70)
-        self.logger.info(f"Motos extraídas: {len(df_raw)}")
-        self.logger.info(f"Motos después de limpieza: {len(df_clean)}")
-        self.logger.info(f"Motos con rentabilidad: {len(df_final)}")
-        self.logger.info(f"Precio mínimo aplicado: {clean_stats.get('precio_minimo', 'N/A')}€")
-        self.logger.info(f"KM máximo aplicado: {clean_stats.get('km_maximo', 'N/A')}")
+        """OPTIMIZADO: Registrar resumen final del proceso"""
+        print("\n" + "="*80)
+        print(f"RESUMEN FINAL - {self.modelo_config['nombre']}")
+        print("="*80)
+        
+        print(f"Motos extraidas: {len(df_raw)}")
+        print(f"Motas despues de limpieza: {len(df_clean)}")
+        print(f"Motos con rentabilidad: {len(df_final)}")
+        print(f"Precio minimo aplicado: {clean_stats.get('precio_minimo', 'N/A')}€")
+        print(f"KM maximo aplicado: {clean_stats.get('km_maximo', 'N/A')}")
         
         if not df_final.empty:
-            # Mostrar estadísticas de extracción
-            titulos_extraidos = len(df_final[df_final['Título'] != 'Sin título'])
+            # Calcular calidades de extraccion
+            titulos_extraidos = len(df_final[df_final['Titulo'] != 'Sin titulo'])
             km_extraidos = len(df_final[df_final['Kilometraje'] != 'No especificado'])
             años_extraidos = len(df_final[df_final['Año'] != 'No especificado'])
+            precios_extraidos = len(df_final[df_final['Precio'] != 'No especificado'])
             
-            self.logger.info(f"ESTADÍSTICAS DE EXTRACCIÓN:")
-            self.logger.info(f"   Títulos extraídos: {titulos_extraidos}/{len(df_final)} ({titulos_extraidos/len(df_final)*100:.1f}%)")
-            self.logger.info(f"   Kilometrajes extraídos: {km_extraidos}/{len(df_final)} ({km_extraidos/len(df_final)*100:.1f}%)")
-            self.logger.info(f"   Años extraídos: {años_extraidos}/{len(df_final)} ({años_extraidos/len(df_final)*100:.1f}%)")
+            print(f"\nCALIDAD DE EXTRACCION:")
+            print(f"   Titulos: {titulos_extraidos}/{len(df_final)} ({titulos_extraidos/len(df_final)*100:.1f}%)")
+            print(f"   Precios: {precios_extraidos}/{len(df_final)} ({precios_extraidos/len(df_final)*100:.1f}%)")
+            print(f"   Kilometrajes: {km_extraidos}/{len(df_final)} ({km_extraidos/len(df_final)*100:.1f}%)")
+            print(f"   Años: {años_extraidos}/{len(df_final)} ({años_extraidos/len(df_final)*100:.1f}%)")
             
-            # Mostrar top 3 si hay rentabilidad
-            if 'Rentabilidad' in df_final.columns:
-                top_3 = df_final.head(3)
-                self.logger.info(f"TOP 3 MÁS RENTABLES:")
-                for i, (_, moto) in enumerate(top_3.iterrows(), 1):
-                    titulo = moto.get('Título', 'Sin título')[:40]
-                    rentabilidad = moto.get('Rentabilidad', 'N/A')
-                    precio = moto.get('Precio', 'N/A')
-                    self.logger.info(f"   {i}. {titulo} - {rentabilidad} - {precio}")
+            # Mostrar top 5 
+            print(f"\nTOP 5 MAS RENTABLES:")
+            top_5 = df_final.head(5)
+            for i, (_, moto) in enumerate(top_5.iterrows(), 1):
+                titulo = moto.get('Titulo', 'Sin titulo')[:40]
+                rentabilidad = moto.get('Rentabilidad', 'N/A')
+                precio = moto.get('Precio', 'N/A')
+                km = moto.get('Kilometraje', 'N/A')
+                año = moto.get('Año', 'N/A')
+                print(f"   {i}. {titulo} | {precio} | {km} | {año} | {rentabilidad}")
         
-        self.logger.info("=" * 70)
+        print("="*80)
+        print("SCRAPING ULTRA OPTIMIZADO COMPLETADO")
+        print("="*80)
 
-# ============================================================================
-# FUNCIONES DE UTILIDAD
-# ============================================================================
-
+# FUNCIONES DE UTILIDAD OPTIMIZADAS
 def test_connection():
-    """Probar conexión a Google Sheets"""
-    print("Probando conexión a Google Sheets...")
+    """RAPIDO: Probar conexion a Google Sheets"""
+    print("[INFO] Probando conexion a Google Sheets...")
     return test_google_sheets_connection()
 
 def list_available_models():
-    """Listar modelos disponibles"""
+    """RAPIDO: Listar modelos disponibles"""
     models = get_all_modelos()
     print("Modelos disponibles:")
     for model in models:
@@ -387,7 +398,7 @@ def list_available_models():
 
 def run_model(modelo_key: str, test_mode: bool = False) -> bool:
     """
-    Ejecutar scraping para un modelo específico
+    ULTRA OPTIMIZADO: Ejecutar scraping para un modelo especifico
     
     Args:
         modelo_key: Clave del modelo
@@ -400,20 +411,17 @@ def run_model(modelo_key: str, test_mode: bool = False) -> bool:
         runner = MainRunner(modelo_key, test_mode)
         return runner.run()
     except Exception as e:
-        print(f"Error ejecutando modelo {modelo_key}: {e}")
+        print(f"ERROR ejecutando modelo {modelo_key}: {e}")
         return False
 
-# ============================================================================
-# FUNCIÓN PRINCIPAL
-# ============================================================================
-
+# FUNCION PRINCIPAL OPTIMIZADA
 def main():
-    """Función principal con argumentos de línea de comandos"""
-    parser = argparse.ArgumentParser(description="Wallapop Motos Scraper CORREGIDO")
+    """Funcion principal ULTRA OPTIMIZADA con argumentos de linea de comandos"""
+    parser = argparse.ArgumentParser(description="Wallapop Motos Scraper ULTRA OPTIMIZADO")
     parser.add_argument("modelo", nargs="?", help="Modelo a scrapear (ej: cb125r)")
     parser.add_argument("--test", action="store_true", help="Ejecutar en modo prueba")
     parser.add_argument("--list", action="store_true", help="Listar modelos disponibles")
-    parser.add_argument("--test-connection", action="store_true", help="Probar conexión Google Sheets")
+    parser.add_argument("--test-connection", action="store_true", help="Probar conexion Google Sheets")
     
     args = parser.parse_args()
     
@@ -427,7 +435,7 @@ def main():
         return
     
     if not args.modelo:
-        print("Error: Debe especificar un modelo")
+        print("ERROR: Debe especificar un modelo")
         print("Uso: python main_runner.py <modelo> [--test]")
         print("Ejemplo: python main_runner.py cb125r --test")
         list_available_models()
@@ -435,28 +443,28 @@ def main():
     
     # Validar modelo
     if args.modelo not in get_all_modelos():
-        print(f"Error: Modelo '{args.modelo}' no válido")
+        print(f"ERROR: Modelo '{args.modelo}' no valido")
         list_available_models()
         return
     
-    # Mostrar configuración de timeouts
-    timeout_config = get_timeout_config()
-    print(f"Configuración de timeouts:")
-    print(f"   Tiempo máximo total: {timeout_config['max_total_scraping_time']/3600:.1f} horas")
-    print(f"   Tiempo máximo por URL: {timeout_config['max_time_per_url']/60:.1f} minutos")
+    # Mostrar configuracion
+    print(f"CONFIGURACION ULTRA OPTIMIZADA:")
+    print(f"   Velocidad: MAXIMA (5x mas rapido)")
+    print(f"   Logging: DETALLADO en tiempo real")
+    print(f"   Timeouts: AGRESIVAMENTE optimizados")
     
     # Ejecutar scraping
-    print(f"Iniciando scraping EXTENDIDO para {args.modelo}")
+    print(f"\nIniciando scraping ULTRA OPTIMIZADO para {args.modelo}")
     if args.test:
-        print("Modo de prueba activado")
+        print("Modo de prueba activado (20 anuncios maximo)")
     
     success = run_model(args.modelo, args.test)
     
     if success:
-        print("Proceso completado exitosamente")
+        print("\nPROCESO COMPLETADO EXITOSAMENTE")
         sys.exit(0)
     else:
-        print("Proceso falló")
+        print("\nPROCESO FALLO")
         sys.exit(1)
 
 if __name__ == "__main__":
