@@ -523,8 +523,6 @@ def run_cb125r_scraper() -> pd.DataFrame:
     Returns:
         DataFrame con resultados del scraping CB125R
     """
-    import pandas as pd
-    
     try:
         # Crear instancia del scraper
         scraper = ScraperCB125R()
