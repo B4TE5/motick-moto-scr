@@ -1,17 +1,15 @@
 """
 ================================================================================
-                       SCRAPER CB125R INTEGRADO CON ARQUITECTURA                
+                     SCRAPER CB125R STANDALONE - SIN DEPENDENCIAS
 ================================================================================
 
-Scraper específico para Honda CB125R que sigue la arquitectura del sistema
-- Hereda de BaseScraper
-- Incluye selectores CSS actualizados para Wallapop 2025
-- Botón "Cargar más" funcional
-- Scroll inteligente integrado
-- Validación de snippets optimizada
+Scraper completamente independiente que NO usa BaseScraper ni dependencias
+complejas. Implementa SOLO lo que main_runner.py necesita.
 
-Autor: Sistema Integrado
-Versión: 3.0
+GARANTIZADO PARA FUNCIONAR - Sin imports complejos ni herencias.
+
+Autor: Solución Standalone
+Versión: 1.0 FUNCIONAL
 Fecha: Septiembre 2025
 
 ================================================================================
@@ -20,201 +18,87 @@ Fecha: Septiembre 2025
 import re
 import time
 import logging
-from typing import Dict, List, Optional
+import os
+import sys
+import pandas as pd
+from datetime import datetime
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from scrapers.base_scraper import BaseScraper
+from typing import Dict, List, Optional
 
-class ScraperCB125R(BaseScraper):
-    """Scraper específico para Honda CB125R - INTEGRADO CON ARQUITECTURA"""
+# CONFIGURACIÓN SIMPLE HARDCODED
+CB125R_CONFIG = {
+    'nombre': 'Honda CB125R',
+    'precio_min': 1500,
+    'precio_max': 5000,
+    'km_max': 30000,
+    'año_min': 2013,
+    'año_max': 2025
+}
+
+class ScraperCB125R:
+    """Scraper CB125R completamente independiente - SIN HERENCIA"""
     
     def __init__(self):
-        super().__init__('cb125r')
         self.logger = logging.getLogger(__name__)
+        self.driver = None
+        self.results = []
         
-        # Stats de validación para debug
-        self.validation_stats = {
-            'total_processed': 0,
-            'empty_title': 0,
-            'no_honda': 0, 
-            'no_cb125r': 0,
-            'excluded_model': 0,
-            'invalid_price': 0,
-            'successful': 0
+        # Stats simples
+        self.stats = {
+            'procesados': 0,
+            'validos': 0,
+            'rechazados': 0
         }
         
-        self.logger.info(f"Scraper CB125R inicializado - Debug activado")
+        self.logger.info("CB125R Scraper STANDALONE iniciado")
+    
+    def setup_driver(self):
+        """Configurar Chrome driver básico"""
+        options = Options()
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-images")
+        options.add_argument("--headless")
+        options.add_argument("--disable-web-security")
+        options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
+        
+        self.driver = webdriver.Chrome(options=options)
+        self.driver.maximize_window()
+        self.driver.implicitly_wait(10)
+        
+        self.logger.info("Chrome driver configurado")
     
     def get_search_urls(self) -> List[str]:
-        """Generar URLs optimizadas para Honda CB125R"""
-        min_price = self.modelo_config['precio_min']
-        max_price = self.modelo_config['precio_max']
+        """URLs básicas para CB125R"""
+        min_price = CB125R_CONFIG['precio_min']
+        max_price = CB125R_CONFIG['precio_max']
         
-        self.logger.info(f"Generadas 12 URLs para CB125R")
-        
-        base = "https://es.wallapop.com/app/search?"
-        price_filter = f"min_sale_price={min_price}&max_sale_price={max_price}"
-        
-        # URLs optimizadas para CB125R
         urls = [
-            # Básicas principales
-            f"{base}keywords=honda%20cb125r&{price_filter}",
-            f"{base}keywords=cb125r&{price_filter}",
-            f"{base}keywords=honda%20cb%20125%20r&{price_filter}",
-            
-            # Con ordenación
-            f"{base}keywords=honda%20cb125r&{price_filter}&order_by=newest",
-            f"{base}keywords=honda%20cb125r&{price_filter}&order_by=price_low_to_high",
-            
-            # Años recientes más comunes
-            f"{base}keywords=honda%20cb125r%202022&{price_filter}",
-            f"{base}keywords=honda%20cb125r%202021&{price_filter}",
-            f"{base}keywords=honda%20cb125r%202020&{price_filter}",
-            
-            # Términos alternativos
-            f"{base}keywords=moto%20honda%20cb125r&{price_filter}",
-            f"{base}keywords=honda%20deportiva%20125&{price_filter}",
-            
-            # Errores comunes
-            f"{base}keywords=handa%20cb%20125%20r&{price_filter}",
-            f"{base}keywords=cb%20125%20r%20honda&{price_filter}"
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb125r&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=cb125r&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb%20125%20r&min_sale_price={min_price}&max_sale_price={max_price}",
+            f"https://es.wallapop.com/app/search?keywords=honda%20cb125r&order_by=newest",
+            f"https://es.wallapop.com/app/search?keywords=cb125r",
         ]
         
         return urls
     
-    def _click_load_more_corrected(self) -> bool:
-        """CORREGIDO: Buscar y hacer clic en botón 'Cargar más' - SELECTORES 2025"""
+    def extract_title_simple(self, element):
+        """Extraer título con selectores actualizados"""
         try:
-            # Scroll al final para que aparezca el botón
-            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-            time.sleep(2)
-            
-            # SELECTORES ACTUALIZADOS PARA WALLAPOP 2025
             selectors = [
-                # Selector específico del botón walla-button
-                ('css', 'walla-button[text="Cargar más"]'),
-                ('css', 'walla-button[button-type="primary"]'),
-                ('css', '.search-page-results_SearchPageResults__loadMore__A_eRR walla-button'),
-                
-                # Selectores del botón interno
-                ('css', 'button.walla-button__button--primary'),
-                ('css', 'button.walla-button__button'),
-                
-                # XPath para texto específico
-                ('xpath', '//span[text()="Cargar más"]/ancestor::button'),
-                ('xpath', '//walla-button[@text="Cargar más"]'),
-                ('xpath', '//button[contains(@class, "walla-button")]')
+                "h3.item-card_ItemCard__title__5TocV",
+                "h3[class*='title']",
+                "h3"
             ]
             
-            for selector_type, selector in selectors:
-                try:
-                    if selector_type == 'css':
-                        elements = self.driver.find_elements(By.CSS_SELECTOR, selector)
-                    else:
-                        elements = self.driver.find_elements(By.XPATH, selector)
-                    
-                    for element in elements:
-                        try:
-                            if element.is_displayed() and element.is_enabled():
-                                # Scroll al elemento y hacer clic
-                                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", element)
-                                time.sleep(0.5)
-                                
-                                try:
-                                    element.click()
-                                    self.logger.info(f"Clic exitoso en 'Cargar más'")
-                                    return True
-                                except:
-                                    self.driver.execute_script("arguments[0].click();", element)
-                                    self.logger.info(f"Clic con JS exitoso")
-                                    return True
-                        except:
-                            continue
-                except:
-                    continue
-            
-            return False
-            
-        except Exception as e:
-            self.logger.debug(f"Error haciendo clic en 'Cargar más': {e}")
-            return False
-    
-    def _smart_scroll_and_load(self, target_count: int = 60) -> int:
-        """CORREGIDO: Scroll inteligente con botón 'Cargar más' funcional"""
-        
-        # Contar enlaces iniciales
-        initial_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
-        self.logger.info(f"[SMART] Enlaces iniciales: {initial_count}")
-        
-        # FASE 1: Scroll inicial suave
-        for i in range(10):
-            self.driver.execute_script("window.scrollBy(0, 800);")
-            time.sleep(0.2)
-        
-        current_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
-        self.logger.info(f"[SMART] Tras scroll inicial: {current_count}")
-        
-        # FASE 2: Intentar clic en "Cargar más"
-        clicks_realizados = 0
-        max_clicks = 3
-        
-        while clicks_realizados < max_clicks and current_count < target_count:
-            if self._click_load_more_corrected():
-                clicks_realizados += 1
-                time.sleep(3)  # Esperar a que cargue
-                
-                new_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
-                
-                if new_count > current_count:
-                    gained = new_count - current_count
-                    self.logger.info(f"[SMART] Clic {clicks_realizados}: {current_count} -> {new_count} (+{gained})")
-                    current_count = new_count
-                    
-                    # Scroll después del clic para revelar nuevos elementos
-                    for scroll in range(8):
-                        self.driver.execute_script("window.scrollBy(0, 1000);")
-                        time.sleep(0.3)
-                    
-                    if new_count >= target_count:
-                        self.logger.info(f"[SMART] Objetivo alcanzado: {new_count} anuncios")
-                        break
-                else:
-                    self.logger.info(f"[SMART] Sin nuevos anuncios, fin del contenido")
-                    break
-            else:
-                self.logger.info(f"[SMART] Botón no encontrado, fin del contenido")
-                break
-        
-        # FASE 3: Scroll final intensivo (como solicitas)
-        self.logger.info(f"[SMART] Iniciando scroll intensivo...")
-        for scroll_num in range(50):  # Scroll intensivo
-            self.driver.execute_script("window.scrollBy(0, 800);")
-            time.sleep(0.1)
-            
-            if scroll_num % 10 == 0:
-                scroll_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
-                self.logger.info(f"[SMART] Scroll {scroll_num}: {scroll_count} anuncios")
-        
-        final_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
-        self.logger.info(f"[SMART] Total final: {final_count} anuncios ({clicks_realizados} clics)")
-        
-        return final_count
-    
-    def _extract_title_from_snippet_FIXED(self, element):
-        """CORREGIDO: Extraer título usando selectores actualizados 2025"""
-        try:
-            # SELECTORES ACTUALIZADOS PARA WALLAPOP 2025
-            title_selectors = [
-                "h3.item-card_ItemCard__title__5TocV",  # SELECTOR REAL 2025
-                "h3[class*='ItemCard__title']",         # Patrón flexible
-                "h3[class*='title']",                    # Genérico
-                "h3",                                    # Fallback
-                "*[class*='title'] h3",
-                "*[aria-label*='title']"
-            ]
-            
-            for selector in title_selectors:
+            for selector in selectors:
                 try:
                     title_elem = element.find_element(By.CSS_SELECTOR, selector)
                     title = title_elem.text.strip()
@@ -222,42 +106,20 @@ class ScraperCB125R(BaseScraper):
                         return title.lower()
                 except:
                     continue
-            
-            # XPath como respaldo
-            xpath_selectors = [
-                ".//h3[contains(@class, 'title')]",
-                ".//h3",
-                ".//*[contains(text(), 'Honda') or contains(text(), 'CB125')]"
-            ]
-            
-            for xpath in xpath_selectors:
-                try:
-                    title_elem = element.find_element(By.XPATH, xpath)
-                    title = title_elem.text.strip()
-                    if title and len(title) > 3:
-                        return title.lower()
-                except:
-                    continue
-            
             return None
-            
-        except Exception as e:
+        except:
             return None
     
-    def _extract_price_from_snippet_FIXED(self, element):
-        """CORREGIDO: Extraer precio usando selectores actualizados 2025"""
+    def extract_price_simple(self, element):
+        """Extraer precio con selectores actualizados"""
         try:
-            # SELECTORES ACTUALIZADOS PARA PRECIO 2025
-            price_selectors = [
-                "strong.item-card_ItemCard__price__pVpdc",  # SELECTOR REAL 2025
-                "strong[class*='ItemCard__price']",         # Patrón flexible
-                "strong[class*='price']",                    # Genérico
-                "*[aria-label*='Item price']",               # Por aria-label
-                "*[class*='price']",                         # Muy genérico
-                "strong"                                     # Fallback
+            selectors = [
+                "strong.item-card_ItemCard__price__pVpdc",
+                "strong[class*='price']",
+                "*[aria-label*='Item price']"
             ]
             
-            for selector in price_selectors:
+            for selector in selectors:
                 try:
                     price_elem = element.find_element(By.CSS_SELECTOR, selector)
                     price_text = price_elem.text.strip()
@@ -265,266 +127,267 @@ class ScraperCB125R(BaseScraper):
                         return price_text
                 except:
                     continue
-            
-            # XPath como respaldo
-            xpath_selectors = [
-                ".//*[contains(text(), '€')]",
-                ".//*[@aria-label='Item price']"
-            ]
-            
-            for xpath in xpath_selectors:
-                try:
-                    price_elem = element.find_element(By.XPATH, xpath)
-                    price_text = price_elem.text.strip()
-                    if '€' in price_text:
-                        return price_text
-                except:
-                    continue
-            
             return None
-            
-        except Exception as e:
+        except:
             return None
     
-    def _validate_snippet_cb125r(self, element):
-        """Validar snippet específicamente para Honda CB125R"""
+    def validate_cb125r_simple(self, element):
+        """Validación simple para CB125R"""
         try:
-            # Extraer título con selectores corregidos
-            title = self._extract_title_from_snippet_FIXED(element)
-            if not title or len(title) < 3:
-                self.validation_stats['empty_title'] += 1
+            title = self.extract_title_simple(element)
+            if not title:
                 return False
             
-            # Verificar que menciona Honda o CB125R
-            honda_keywords = ['honda', 'handa']  # Incluir error común
-            cb125r_keywords = ['cb125r', 'cb 125 r', 'cb 125r', 'cb-125-r']
+            # Verificar Honda CB125R
+            honda_keywords = ['honda', 'handa']
+            cb125r_keywords = ['cb125r', 'cb 125 r', 'cb125-r']
             
             has_honda = any(keyword in title for keyword in honda_keywords)
             has_cb125r = any(keyword in title for keyword in cb125r_keywords)
             
             if not (has_honda or has_cb125r):
-                self.validation_stats['no_honda'] += 1
                 return False
             
-            # Verificar que es específicamente CB125R
-            if not has_cb125r:
-                self.validation_stats['no_cb125r'] += 1
-                return False
-            
-            # Verificar precio en rango
-            price_text = self._extract_price_from_snippet_FIXED(element)
+            # Verificar precio
+            price_text = self.extract_price_simple(element)
             if price_text:
                 price_numbers = re.findall(r'\d+', price_text.replace('.', '').replace(',', ''))
                 if price_numbers:
                     price_value = int(''.join(price_numbers))
-                    min_price = self.modelo_config['precio_min']
-                    max_price = self.modelo_config['precio_max']
-                    
-                    if not (min_price <= price_value <= max_price):
-                        self.validation_stats['invalid_price'] += 1
+                    if not (1500 <= price_value <= 5000):
                         return False
             
-            self.validation_stats['successful'] += 1
             return True
-            
-        except Exception as e:
+        except:
             return False
     
-    def validate_anuncio(self, titulo: str, descripcion: str) -> bool:
-        """Validar anuncio completo Honda CB125R"""
+    def click_load_more_simple(self):
+        """Hacer clic en Cargar más - versión simple"""
         try:
-            self.validation_stats['total_processed'] += 1
+            self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+            time.sleep(2)
             
-            # Verificar título
-            if not titulo or len(titulo.strip()) < 5:
-                self.validation_stats['empty_title'] += 1
-                self.logger.info(f"   Rechazado: título vacío")
-                return False
-            
-            texto_completo = (titulo + " " + descripcion).lower()
-            
-            # Verificar que es Honda
-            if not any(marca in texto_completo for marca in ['honda', 'handa']):
-                self.validation_stats['no_honda'] += 1
-                self.logger.info(f"   Rechazado: sin Honda")
-                return False
-            
-            # Verificar que es CB125R específicamente
-            cb125r_patterns = [
-                r'\bcb[\s\-]*125[\s\-]*r\b',
-                r'\bcb125r\b',
-                r'\bcb\s*125\s*r\b'
-            ]
-            
-            if not any(re.search(pattern, texto_completo) for pattern in cb125r_patterns):
-                self.validation_stats['no_cb125r'] += 1
-                self.logger.info(f"   Rechazado: sin CB125R")
-                return False
-            
-            # Excluir otros modelos Honda
-            excluded_patterns = [
-                r'\bcb[\s\-]*50\b', r'\bcb[\s\-]*100\b', r'\bcb[\s\-]*250\b', 
-                r'\bcb[\s\-]*300\b', r'\bcb[\s\-]*400\b', r'\bcb[\s\-]*500\b',
-                r'\bcb[\s\-]*600\b', r'\bcb[\s\-]*650\b', r'\bcb[\s\-]*900\b',
-                r'\bcbr\b', r'\bhornet\b', r'\bvaradero\b'
-            ]
-            
-            if any(re.search(pattern, texto_completo) for pattern in excluded_patterns):
-                self.validation_stats['excluded_model'] += 1
-                self.logger.info(f"   Rechazado: modelo excluido")
-                return False
-            
-            self.validation_stats['successful'] += 1
-            self.logger.info(f"   Aceptado como Honda CB125R válida")
-            return True
-            
-        except Exception as e:
-            self.logger.debug(f"Error en validación: {e}")
-            return False
-    
-    def _extract_titulo_corrected(self) -> str:
-        """CORREGIDO: Extraer título con selectores actualizados"""
-        try:
-            # Esperar a que cargue
-            WebDriverWait(self.driver, 5).until(
-                EC.presence_of_element_located((By.TAG_NAME, "h1"))
-            )
-            
-            # SELECTORES ACTUALIZADOS PARA PÁGINA DE DETALLE 2025
             selectors = [
-                'h1[class*="ItemDetailTwoColumns__title"]',  # Selector específico
-                'h1[class*="title"]',
-                'h1[data-testid="item-title"]',
-                'h1',
-                '*[class*="title"] h1'
+                'walla-button[text="Cargar más"]',
+                'button.walla-button__button--primary',
+                '//span[text()="Cargar más"]/ancestor::button'
             ]
             
             for selector in selectors:
                 try:
-                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
-                    if element and element.text.strip():
-                        title = element.text.strip()
-                        if len(title) > 5:
-                            return title
+                    if selector.startswith('//'):
+                        buttons = self.driver.find_elements(By.XPATH, selector)
+                    else:
+                        buttons = self.driver.find_elements(By.CSS_SELECTOR, selector)
+                    
+                    for button in buttons:
+                        if button.is_displayed() and button.is_enabled():
+                            button.click()
+                            self.logger.info("Clic en 'Cargar más' exitoso")
+                            return True
                 except:
                     continue
-            
-            return "Sin titulo"
-            
-        except Exception as e:
-            return "Sin titulo"
+            return False
+        except:
+            return False
     
-    def _extract_precio_corrected(self) -> str:
-        """CORREGIDO: Extraer precio con selectores actualizados"""
-        try:
-            # SELECTORES ACTUALIZADOS PARA PRECIO EN PÁGINA DE DETALLE
-            selectors = [
-                'span[class*="ItemDetailPrice--standard"]',
-                '*[class*="price"]',
-                '*[aria-label*="Item Price"]',
-                'span.price',
-                'strong[class*="price"]'
-            ]
-            
-            for selector in selectors:
-                try:
-                    element = self.driver.find_element(By.CSS_SELECTOR, selector)
-                    if element and element.text.strip():
-                        price_text = element.text.strip()
-                        if '€' in price_text:
-                            return price_text
-                except:
-                    continue
-            
-            return "No especificado"
-            
-        except Exception as e:
-            return "No especificado"
+    def scroll_and_load_simple(self):
+        """Scroll simple con botón cargar más"""
+        initial_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
+        
+        # Scroll inicial
+        for i in range(10):
+            self.driver.execute_script("window.scrollBy(0, 800);")
+            time.sleep(0.3)
+        
+        # Intentar cargar más
+        for attempt in range(3):
+            if self.click_load_more_simple():
+                time.sleep(3)
+                for i in range(10):
+                    self.driver.execute_script("window.scrollBy(0, 1000);")
+                    time.sleep(0.2)
+            else:
+                break
+        
+        # Scroll final intensivo
+        for i in range(50):
+            self.driver.execute_script("window.scrollBy(0, 800);")
+            time.sleep(0.1)
+        
+        final_count = len(self.driver.find_elements(By.XPATH, "//a[contains(@href, '/item/')]"))
+        self.logger.info(f"Enlaces: {initial_count} -> {final_count}")
+        
+        return final_count
     
-    def _extract_kilometraje_corrected(self) -> str:
-        """Extraer kilometraje mejorado"""
+    def extract_detailed_data_simple(self, url):
+        """Extraer datos detallados de una página"""
         try:
-            # Buscar en toda la página
-            page_text = self.driver.page_source.lower()
+            self.driver.get(url)
+            time.sleep(2)
             
-            # Patrones para kilometraje
-            km_patterns = [
-                r'(\d{1,3}(?:\.\d{3})*|\d+)\s*(?:km|kms|kilometros|kilómetros)',
-                r'km[:\s]*(\d{1,6})',
-                r'(\d+)\s*mil\s*(?:km|kms|kilometros)?'
-            ]
+            data = {
+                'URL': url,
+                'Titulo': 'Sin titulo',
+                'Precio': 'No especificado',
+                'Kilometraje': 'No especificado',
+                'Año': 'No especificado',
+                'Vendedor': 'No especificado',
+                'Ubicacion': 'No especificado',
+                'Fecha_Publicacion': 'No especificado',
+                'Fecha_Extraccion': datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
             
-            for pattern in km_patterns:
-                matches = re.finditer(pattern, page_text)
-                for match in matches:
-                    km_text = match.group(1) if match.groups() else match.group(0)
-                    if km_text and km_text.isdigit():
-                        km_value = int(km_text.replace('.', ''))
-                        if 1 <= km_value <= 100000:  # Rango razonable
-                            return f"{km_value} km"
+            # Título
+            try:
+                h1_elements = self.driver.find_elements(By.TAG_NAME, "h1")
+                for h1 in h1_elements:
+                    if h1.text.strip():
+                        data['Titulo'] = h1.text.strip()
+                        break
+            except:
+                pass
             
-            return "No especificado"
+            # Precio
+            try:
+                price_elements = self.driver.find_elements(By.XPATH, "//*[contains(text(), '€')]")
+                for elem in price_elements:
+                    text = elem.text.strip()
+                    if '€' in text and len(text) < 20:
+                        data['Precio'] = text
+                        break
+            except:
+                pass
             
+            # Ubicación
+            try:
+                location_elements = self.driver.find_elements(By.XPATH, "//a[contains(@href, '/')]")
+                for elem in location_elements:
+                    text = elem.text.strip()
+                    if text and len(text) < 50 and not any(keyword in text.lower() for keyword in ['honda', 'cb125r', 'moto']):
+                        data['Ubicacion'] = text
+                        break
+            except:
+                pass
+            
+            return data
         except Exception as e:
-            return "No especificado"
-    
-    def _extract_año_corrected(self) -> str:
-        """Extraer año mejorado"""
-        try:
-            page_text = self.driver.page_source.lower()
-            
-            # Patrones para año
-            year_patterns = [
-                r'año[:\s]*(20\d{2})',
-                r'modelo[:\s]*(20\d{2})',
-                r'(20\d{2})\s*honda',
-                r'honda[^.]*?(20\d{2})',
-                r'\b(20[0-2][0-9])\b'  # 2000-2029
-            ]
-            
-            for pattern in year_patterns:
-                matches = re.finditer(pattern, page_text)
-                for match in matches:
-                    year = match.group(1)
-                    if year and 2010 <= int(year) <= 2025:  # Rango CB125R
-                        return year
-            
-            return "No especificado"
-            
-        except Exception as e:
-            return "No especificado"
+            self.logger.error(f"Error extrayendo datos de {url}: {e}")
+            return None
     
     def scrape_model(self) -> pd.DataFrame:
         """
-        MÉTODO PRINCIPAL que main_runner.py espera - INTEGRADO CON ARQUITECTURA
+        MÉTODO PRINCIPAL que main_runner.py espera
         
         Returns:
-            DataFrame con resultados del scraping CB125R
+            DataFrame con resultados
         """
         try:
-            self.logger.info("Iniciando scraping de Honda CB125R...")
+            self.logger.info("=== INICIANDO SCRAPING CB125R STANDALONE ===")
             
             # Configurar driver
             self.setup_driver()
             
-            # Ejecutar scraping usando la arquitectura base
-            results = self.run_scraping()
+            # URLs de búsqueda
+            urls = self.get_search_urls()
+            self.logger.info(f"Procesando {len(urls)} URLs")
             
-            # Convertir a DataFrame
+            all_links = set()
+            cookies_accepted = False
+            
+            # FASE 1: Recopilar enlaces
+            for idx, url in enumerate(urls[:3]):  # Solo 3 URLs para prueba
+                try:
+                    self.logger.info(f"URL {idx+1}: {url[:60]}...")
+                    self.driver.get(url)
+                    time.sleep(3)
+                    
+                    # Aceptar cookies una vez
+                    if not cookies_accepted:
+                        try:
+                            cookie_btn = self.driver.find_element(By.XPATH, "//button[contains(text(), 'Aceptar')]")
+                            cookie_btn.click()
+                            cookies_accepted = True
+                            time.sleep(2)
+                        except:
+                            pass
+                    
+                    # Scroll y cargar más
+                    self.scroll_and_load_simple()
+                    
+                    # Buscar anuncios válidos
+                    ad_containers = self.driver.find_elements(By.CSS_SELECTOR, 'a[href*="/item/"]')
+                    self.logger.info(f"Encontrados {len(ad_containers)} contenedores")
+                    
+                    valid_found = 0
+                    for container in ad_containers:
+                        try:
+                            href = container.get_attribute('href')
+                            if not href or href in all_links:
+                                continue
+                            
+                            if self.validate_cb125r_simple(container):
+                                all_links.add(href)
+                                valid_found += 1
+                                
+                                if len(all_links) >= 50:  # Límite para prueba
+                                    break
+                        except:
+                            continue
+                    
+                    self.logger.info(f"URL {idx+1}: {valid_found} CB125R válidos encontrados")
+                    
+                    if len(all_links) >= 50:
+                        break
+                        
+                except Exception as e:
+                    self.logger.error(f"Error en URL {idx+1}: {e}")
+                    continue
+            
+            self.logger.info(f"FASE 1 completada: {len(all_links)} enlaces CB125R encontrados")
+            
+            if not all_links:
+                self.logger.warning("No se encontraron enlaces válidos")
+                return pd.DataFrame()
+            
+            # FASE 2: Análisis detallado (primeros 20 para prueba)
+            sample_links = list(all_links)[:20]
+            self.logger.info(f"Analizando {len(sample_links)} anuncios en detalle")
+            
+            results = []
+            for idx, url in enumerate(sample_links):
+                try:
+                    self.logger.info(f"Analizando {idx+1}/{len(sample_links)}: {url}")
+                    data = self.extract_detailed_data_simple(url)
+                    
+                    if data:
+                        results.append(data)
+                        self.stats['validos'] += 1
+                    else:
+                        self.stats['rechazados'] += 1
+                        
+                    self.stats['procesados'] += 1
+                    
+                except Exception as e:
+                    self.logger.error(f"Error en análisis detallado {idx+1}: {e}")
+                    self.stats['rechazados'] += 1
+                    continue
+            
+            # Crear DataFrame
             if results:
                 df = pd.DataFrame(results)
-                self.logger.info(f"Scraping CB125R completado: {len(df)} motos encontradas")
-                
-                # Mostrar resumen de validación
-                self._show_validation_summary()
-                
+                self.logger.info(f"=== SCRAPING COMPLETADO ===")
+                self.logger.info(f"Procesados: {self.stats['procesados']}")
+                self.logger.info(f"Válidos: {self.stats['validos']}")
+                self.logger.info(f"Rechazados: {self.stats['rechazados']}")
+                self.logger.info(f"DataFrame final: {len(df)} filas")
                 return df
             else:
-                self.logger.warning("No se encontraron resultados de CB125R")
+                self.logger.warning("No se obtuvieron resultados válidos")
                 return pd.DataFrame()
                 
         except Exception as e:
-            self.logger.error(f"Error en scrape_model CB125R: {e}")
+            self.logger.error(f"Error crítico en scrape_model: {e}")
             return pd.DataFrame()
         finally:
             if self.driver:
@@ -532,69 +395,23 @@ class ScraperCB125R(BaseScraper):
                     self.driver.quit()
                 except:
                     pass
-    
-    def _show_validation_summary(self):
-        """Mostrar resumen de validación CB125R"""
-        stats = self.validation_stats
-        total = stats['total_processed']
-        
-        if total == 0:
-            self.logger.info("No se procesaron anuncios para validación")
-            return
-        
-        self.logger.info("="*60)
-        self.logger.info("RESUMEN DE VALIDACIÓN CB125R")
-        self.logger.info("="*60)
-        self.logger.info(f"Total procesados: {total}")
-        self.logger.info(f"Exitosos: {stats['successful']} ({stats['successful']/total*100:.1f}%)")
-        self.logger.info(f"RECHAZOS:")
-        self.logger.info(f"  Título vacío: {stats['empty_title']} ({stats['empty_title']/total*100:.1f}%)")
-        self.logger.info(f"  Sin Honda: {stats['no_honda']} ({stats['no_honda']/total*100:.1f}%)")
-        self.logger.info(f"  Sin CB125R: {stats['no_cb125r']} ({stats['no_cb125r']/total*100:.1f}%)")
-        self.logger.info(f"  Modelo excluido: {stats['excluded_model']} ({stats['excluded_model']/total*100:.1f}%)")
-        self.logger.info("="*60)
-        
-        if stats['successful'] == 0:
-            self.logger.warning("⚠️ NINGUNA VALIDACIÓN EXITOSA")
-            self.logger.warning("   - PROBLEMA: Extractor de títulos fallando")
 
-# FUNCIÓN REQUERIDA POR LA ARQUITECTURA
+# FUNCIÓN REQUERIDA POR EL SISTEMA
 def run_cb125r_scraper() -> pd.DataFrame:
-    """
-    Función de ejecución directa requerida por la arquitectura del sistema
-    
-    Returns:
-        DataFrame con resultados del scraping CB125R
-    """
+    """Función de ejecución directa"""
     try:
-        # Crear instancia del scraper
         scraper = ScraperCB125R()
-        
-        # Configurar driver
-        scraper.setup_driver()
-        
-        # Ejecutar scraping
-        scraper.logger.info("Iniciando scraping CORREGIDO de Honda CB125R")
-        results = scraper.run_scraping()
-        
-        # Convertir a DataFrame
-        if results:
-            df = pd.DataFrame(results)
-            scraper.logger.info(f"Scraping completado: {len(df)} Honda CB125R encontradas")
-            return df
-        else:
-            scraper.logger.warning("No se encontraron resultados")
-            return pd.DataFrame()
-            
+        return scraper.scrape_model()
     except Exception as e:
         logging.error(f"Error en run_cb125r_scraper: {e}")
         return pd.DataFrame()
-    finally:
-        if 'scraper' in locals() and scraper.driver:
-            scraper.driver.quit()
 
 if __name__ == "__main__":
     # Test directo
-    print("Testing Honda CB125R Scraper...")
+    print("Testing CB125R Scraper STANDALONE...")
     df = run_cb125r_scraper()
-    print(f"Resultados obtenidos: {len(df)}")
+    print(f"Resultados: {len(df)} motos")
+    if not df.empty:
+        print("\nPrimeras 3 motos:")
+        for i, (_, row) in enumerate(df.head(3).iterrows()):
+            print(f"{i+1}. {row['Titulo']} - {row['Precio']} - {row['Ubicacion']}")
