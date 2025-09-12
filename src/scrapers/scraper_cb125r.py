@@ -315,9 +315,45 @@ class ScraperCB125R:
                     # Scroll y cargar más
                     self.scroll_and_load_simple()
                     
-                    # Buscar anuncios válidos
-                    ad_containers = self.driver.find_elements(By.CSS_SELECTOR, 'a[href*="/item/"]')
-                    self.logger.info(f"Encontrados {len(ad_containers)} contenedores")
+                    # DEBUG: Ver qué HTML está recibiendo
+                    page_source = self.driver.page_source
+                    self.logger.info(f"Título página: {self.driver.title}")
+                    self.logger.info(f"URL actual: {self.driver.current_url}")
+                    
+                    # Buscar si hay elementos básicos
+                    all_links = self.driver.find_elements(By.TAG_NAME, "a")
+                    self.logger.info(f"Total enlaces en página: {len(all_links)}")
+                    
+                    # Buscar diferentes patrones de anuncios
+                    patterns_to_try = [
+                        'a[href*="/item/"]',
+                        'a[href*="item"]', 
+                        'a[class*="item"]',
+                        'a[class*="ItemCard"]',
+                        'div[class*="item"]',
+                        'div[class*="ItemCard"]'
+                    ]
+                    
+                    ad_containers = []
+                    for pattern in patterns_to_try:
+                        containers = self.driver.find_elements(By.CSS_SELECTOR, pattern)
+                        self.logger.info(f"Patrón '{pattern}': {len(containers)} elementos")
+                        if containers:
+                            ad_containers = containers
+                            break
+                    
+                    # Si no encuentra nada, imprimir parte del HTML para debug
+                    if not ad_containers:
+                        html_sample = page_source[:2000] if len(page_source) > 2000 else page_source
+                        self.logger.info(f"HTML SAMPLE: {html_sample}")
+                        
+                        # Buscar si hay errores obvios
+                        if "robot" in page_source.lower() or "captcha" in page_source.lower():
+                            self.logger.error("DETECTADO: Página de bloqueo de robot/captcha")
+                        elif len(page_source) < 1000:
+                            self.logger.error("DETECTADO: Página muy pequeña, posible error de carga")
+                    
+                    self.logger.info(f"Contenedores finales encontrados: {len(ad_containers)}")
                     
                     valid_found = 0
                     for container in ad_containers:
