@@ -494,10 +494,53 @@ class ScraperCB125R(BaseScraper):
         except Exception as e:
             return "No especificado"
     
+    def scrape_model(self) -> pd.DataFrame:
+        """
+        MÉTODO PRINCIPAL que main_runner.py espera - INTEGRADO CON ARQUITECTURA
+        
+        Returns:
+            DataFrame con resultados del scraping CB125R
+        """
+        try:
+            self.logger.info("Iniciando scraping de Honda CB125R...")
+            
+            # Configurar driver
+            self.setup_driver()
+            
+            # Ejecutar scraping usando la arquitectura base
+            results = self.run_scraping()
+            
+            # Convertir a DataFrame
+            if results:
+                df = pd.DataFrame(results)
+                self.logger.info(f"Scraping CB125R completado: {len(df)} motos encontradas")
+                
+                # Mostrar resumen de validación
+                self._show_validation_summary()
+                
+                return df
+            else:
+                self.logger.warning("No se encontraron resultados de CB125R")
+                return pd.DataFrame()
+                
+        except Exception as e:
+            self.logger.error(f"Error en scrape_model CB125R: {e}")
+            return pd.DataFrame()
+        finally:
+            if self.driver:
+                try:
+                    self.driver.quit()
+                except:
+                    pass
+    
     def _show_validation_summary(self):
         """Mostrar resumen de validación CB125R"""
         stats = self.validation_stats
         total = stats['total_processed']
+        
+        if total == 0:
+            self.logger.info("No se procesaron anuncios para validación")
+            return
         
         self.logger.info("="*60)
         self.logger.info("RESUMEN DE VALIDACIÓN CB125R")
